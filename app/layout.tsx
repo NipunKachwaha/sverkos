@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Instrument_Serif, Barlow } from 'next/font/google'
 import { ClerkProvider } from "@clerk/nextjs";
-import Navbar from "@/components/Navbar";
 import './globals.css'
 
 const instrumentSerif = Instrument_Serif({
@@ -23,17 +22,12 @@ export const metadata: Metadata = {
   title: 'Space — Venture Past Our Sky',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="en" className={`${instrumentSerif.variable} ${barlow.variable}`}>
         <body className="bg-black text-white font-body antialiased">
-          <Navbar />
-          <main className="p-4">{children}</main>
+          <main>{children}</main>  
         </body>
       </html>
     </ClerkProvider>

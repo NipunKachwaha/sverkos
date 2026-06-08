@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Aapka baaki ka .liquid-glass aur custom CSS yahan neeche rahega */
 
 html, body {
   width: 100%;
