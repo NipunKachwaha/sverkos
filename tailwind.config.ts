@@ -10,6 +10,7 @@ const config: Config = {
       fontFamily: {
         heading: ['var(--font-heading)'],
         body: ['var(--font-body)'],
+        logo: ['Zaslia', 'Themunday', 'sans-serif'],
       },
       borderRadius: {
         DEFAULT: '9999px',

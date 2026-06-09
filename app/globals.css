@@ -61,3 +61,12 @@ html, body {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+@font-face {
+  font-family: 'MyCustomFont';
+  /* Replace with your exact file path and extension (.woff2, .ttf, .otf) */
+  src: url('/fonts/Zaslia.otf') format('truetype'); 
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
