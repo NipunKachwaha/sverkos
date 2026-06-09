@@ -22,7 +22,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-4 left-0 right-0 px-8 lg:px-16 z-50 flex items-center justify-between w-full">
       {/* Logo */}
-      <div className="w-20 h-12 liquid-glass rounded-xl flex items-center justify-center shrink-0">
+      <div className="w-22 h-12 liquid-glass rounded-xl flex items-center justify-center shrink-0">
         <span className={`${Zaslia.className} italic text-white text-lg leading-none`}>
           Sverkos
         </span>
