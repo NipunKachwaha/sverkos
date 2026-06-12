@@ -1,5 +1,5 @@
-import HeroSection from '@/components/HeroSection'
-import CapabilitiesSection from '@/components/CapabilitiesSection'
+import HeroSection from '@/app/components/HeroSection'
+import CapabilitiesSection from '@/app/components/CapabilitiesSection'
 
 export default async function Home() {
   return (
