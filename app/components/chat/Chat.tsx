@@ -1,3 +1,5 @@
+'use client';
+
 import { useStore } from '@nanostores/react';
 import type { Message, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';

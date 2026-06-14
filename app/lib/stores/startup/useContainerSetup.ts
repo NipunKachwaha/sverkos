@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { ContainerBootState, setContainerBootState, waitForBootStepCompleted } from '~/lib/stores/containerBootState';
-import { webcontainer } from '~/lib/webcontainer';
+import { webcontainer } from '../../webcontainer/index';
 import { useStore } from '@nanostores/react';
-import { sessionIdStore } from '~/lib/stores/sessionId';
+import { sessionIdStore } from '../sessionId';
 import { api } from '@convex/_generated/api';
 import type { ConvexReactClient } from 'convex/react';
 import { useConvex } from 'convex/react';
@@ -16,12 +16,12 @@ import type { WebContainer } from '@webcontainer/api';
 import { queryEnvVariableWithRetries, setEnvVariablesWithRetries } from 'chef-agent/convexEnvVariables';
 import { getConvexSiteUrl } from '~/lib/convexSiteUrl';
 import { workbenchStore } from '~/lib/stores/workbench.client';
-import { initializeConvexAuth } from 'chef-agent/convexAuth';
-import { appendEnvVarIfNotSet } from '~/utils/envFileUtils';
-import { getFileUpdateCounter } from '~/lib/stores/fileUpdateCounter';
+import { initializeConvexAuth } from '../../../../lib/agent/convexAuth';
+import { appendEnvVarIfNotSet } from '../../../utils/envFileUtils';
+import { getFileUpdateCounter } from '../fileUpdateCounter';
 import { chatSyncState } from './chatSyncState';
-import { FILE_EVENTS_DEBOUNCE_MS } from '~/lib/stores/files';
-import { setChefDebugProperty } from 'chef-agent/utils/chefDebug';
+import { FILE_EVENTS_DEBOUNCE_MS } from '../files';
+import { setChefDebugProperty } from '../../../../lib/agent/utils/chefDebug';
 
 const TEMPLATE_URL = '/template-snapshot-342e2b07.bin';
 

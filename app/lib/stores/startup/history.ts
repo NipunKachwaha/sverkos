@@ -1,12 +1,14 @@
+'use client';
+
 import type { Message } from 'ai';
 import { useConvex, useQuery, type ConvexReactClient } from 'convex/react';
-import { useConvexSessionIdOrNullOrLoading, waitForConvexSessionId } from '~/lib/stores/sessionId';
-import { getFileUpdateCounter, waitForFileUpdateCounterChanged } from '~/lib/stores/fileUpdateCounter';
-import { buildUncompressedSnapshot } from '~/lib/snapshot.client';
+import { useConvexSessionIdOrNullOrLoading, waitForConvexSessionId } from '../sessionId';
+import { getFileUpdateCounter, waitForFileUpdateCounterChanged } from '../fileUpdateCounter';
+import { buildUncompressedSnapshot } from '../../snapshot.client';
 import type { Id } from '@convex/_generated/dataModel';
-import { backoffTime } from '~/utils/constants';
+import { backoffTime } from '../../../utils/constants';
 import { useEffect } from 'react';
-import { compressWithLz4 } from '~/lib/compression';
+import { compressWithLz4 } from '../../compression';
 import {
   handleUrlHintAndDescription,
   lastCompleteMessageInfoStore,
