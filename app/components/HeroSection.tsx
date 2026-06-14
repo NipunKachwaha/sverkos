@@ -53,10 +53,12 @@ export default function HeroSection() {
             transition={{ duration: 0.7, delay: 1.1, ease: 'easeOut' }}
             className="flex items-center gap-6 mt-6"
           >
-            <button className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white flex items-center gap-2 font-body">
-              Start Your Voyage
-              <ArrowUpRight className="h-5 w-5" />
-            </button>
+            <a href="/chat">
+              <button className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white flex items-center gap-2 font-body">
+                Start Your Voyage
+                <ArrowUpRight className="h-5 w-5" />
+              </button>
+            </a>
             <button className="text-sm font-medium text-white font-body flex items-center gap-2">
               View Liftoff
               <PlayIcon className="h-4 w-4" />

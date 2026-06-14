@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { chooseExperience, type Experience } from '~/utils/experienceChooser';
+import { chooseExperience, type Experience } from '../utils/experienceChooser';
 import { Button } from '@ui/Button';
 
 export function CompatibilityWarnings({ setEnabled }: { setEnabled: (enabled: boolean) => void }) {

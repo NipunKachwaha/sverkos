@@ -1,4 +1,4 @@
-import { VITE_PROVISION_HOST } from './convexProvisionHost';
+import { VITE_PROVISION_HOST } from './provisionHost';
 
 export interface ConvexProfile {
   name: string;

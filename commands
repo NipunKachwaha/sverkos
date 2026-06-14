@@ -1,0 +1,10 @@
+# git commands
+git add .
+git commit -m "update code"
+git push
+
+# listen to webhooks
+npx svix-cli listen http://localhost:3000/api/webhooks/clerk
+
+# file list 
+Get-ChildItem -Recurse -Filter "*.tsx" | Where-Object { $_.FullName -notmatch "node_modules" -and $_.FullName -notmatch "\.next" } | Select-Object -ExpandProperty FullName | Sort-Object

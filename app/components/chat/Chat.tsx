@@ -3,50 +3,41 @@ import type { Message, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useMessageParser, type PartCache } from '~/lib/hooks/useMessageParser';
-import { useSnapScroll } from '~/lib/hooks/useSnapScroll';
-import { description } from '~/lib/stores/description';
-import { chatStore } from '~/lib/stores/chatId';
-import { workbenchStore } from '~/lib/stores/workbench.client';
-import { MAX_CONSECUTIVE_DEPLOY_ERRORS, type ModelSelection } from '~/utils/constants';
-import { cubicEasingFn } from '~/utils/easings';
-import { createScopedLogger } from 'chef-agent/utils/logger';
+import { useMessageParser, type PartCache } from '../../lib/hooks/useMessageParser';
+import { useSnapScroll } from '../../lib/hooks/useSnapScroll';
+import { description } from '../../lib/stores/description';
+import { chatStore } from '../../lib/stores/chatId';
+import { workbenchStore } from '../../lib/stores/workbench.client';
+import { MAX_CONSECUTIVE_DEPLOY_ERRORS, type ModelSelection } from '../../utils/constants';
+import { cubicEasingFn } from '../../utils/easings';
+import { createScopedLogger } from '../../../lib/agent/utils/logger';
 import { BaseChat } from './BaseChat.client';
-import { createSampler } from '~/utils/sampler';
-import { filesToArtifacts } from '~/utils/fileUtils';
-import { ChatContextManager } from 'chef-agent/ChatContextManager';
-import { selectedTeamSlugStore, setSelectedTeamSlug, useSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { convexProjectStore } from '~/lib/stores/convexProject';
+import { createSampler } from '../../utils/sampler';
+import { filesToArtifacts } from '../../utils/fileUtils';
+import { ChatContextManager } from '../../../lib/agent/ChatContextManager';
 import { toast } from 'sonner';
-import type { PartId } from '~/lib/stores/artifacts';
+import type { PartId } from '../../lib/stores/artifacts';
 import { captureException, captureMessage } from '@sentry/remix';
-import type { ActionStatus } from '~/lib/runtime/action-runner';
-import { chatIdStore, initialIdStore } from '~/lib/stores/chatId';
-import { useConvex, useQuery } from 'convex/react';
-import type { ConvexReactClient } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import { getTokenUsage } from '~/lib/convexUsage';
+import type { ActionStatus } from '../../lib/runtime/action-runner';
+import { chatIdStore, initialIdStore } from '../../lib/stores/chatId';
 import { formatDistanceStrict } from 'date-fns';
 import { atom } from 'nanostores';
 import { STATUS_MESSAGES } from './StreamingIndicator';
 import { Button } from '@ui/Button';
-import { TeamSelector } from '~/components/convex/TeamSelector';
 import { ClipboardIcon, ExternalLinkIcon } from '@radix-ui/react-icons';
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
-import type { Id } from 'convex/_generated/dataModel';
-import { VITE_PROVISION_HOST } from '~/lib/convexProvisionHost';
-import type { ProviderType } from '~/lib/common/annotations';
-import { setChefDebugProperty } from 'chef-agent/utils/chefDebug';
+import type { ProviderType } from '../../lib/common/annotations';
+import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
 import { MissingApiKey } from './MissingApiKey';
-import { models, type ModelProvider } from '~/components/chat/ModelSelector';
-import { useLaunchDarkly } from '~/lib/hooks/useLaunchDarkly';
+import { models, type ModelProvider } from './ModelSelector';
+import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
 import { useLocalStorage } from '@uidotdev/usehooks';
 import { KeyIcon } from '@heroicons/react/24/outline';
-import { UsageDebugView } from '~/components/debug/UsageDebugView';
-import { useReferralCode, useReferralStats } from '~/lib/hooks/useReferralCode';
-import { useUsage } from '~/lib/stores/usage';
-import { hasAnyApiKeySet, hasApiKeySet } from '~/lib/common/apiKey';
-import { chatSyncState } from '~/lib/stores/startup/chatSyncState';
+import { UsageDebugView } from '../debug/UsageDebugView';
+import { useUsage } from '../../lib/stores/usage';
+import { hasAnyApiKeySet, hasApiKeySet } from '../../lib/common/apiKey';
+import { chatSyncState } from '../../lib/stores/startup/chatSyncState';
+// ✅ Replaced: useConvex, useConvexAuth, convex api → Clerk
+import { useAuth } from '@clerk/nextjs';
 
 const logger = createScopedLogger('Chat');
 
@@ -82,7 +73,6 @@ interface ChatProps {
   ) => Promise<void>;
   initializeChat: () => Promise<boolean>;
   description?: string;
-
   isReload: boolean;
   hadSuccessfulDeploy: boolean;
   subchats?: { subchatIndex: number; updatedAt: number; description?: string }[];
@@ -92,6 +82,7 @@ const retryState = atom({
   numFailures: 0,
   nextRetry: Date.now(),
 });
+
 export const Chat = memo(
   ({
     initialMessages,
@@ -102,33 +93,54 @@ export const Chat = memo(
     hadSuccessfulDeploy,
     subchats,
   }: ChatProps) => {
-    const convex = useConvex();
-    const sessionId = useConvexSessionIdOrNullOrLoading();
+    // ✅ Replaced: useConvex() + useConvexSessionIdOrNullOrLoading() → Clerk
+    const { userId: sessionId, getToken } = useAuth();
+
     const [chatStarted, setChatStarted] = useState(initialMessages.length > 0 || (!!subchats && subchats.length > 1));
     const actionAlert = useStore(workbenchStore.alert);
     const syncState = useStore(chatSyncState);
 
+    // ✅ Replaced: useQuery(api.apiKeys.apiKeyForCurrentMember) → fetch
+    const [apiKey, setApiKey] = useState<{
+      preference?: string;
+      value?: string;
+      openai?: string;
+      xai?: string;
+      google?: string;
+    } | null>(null);
+
+    useEffect(() => {
+      fetch('/api/api-keys/current')
+        .then((res) => res.json())
+        .then((data) => setApiKey(data))
+        .catch(() => setApiKey(null));
+    }, []);
+
+    // ✅ Replaced: convex.mutation(api.messages.rewindChat) → fetch
     const rewindToMessage = async (subchatIndex?: number, messageIndex?: number) => {
       if (sessionId && typeof sessionId === 'string') {
         const chatId = chatIdStore.get();
-        if (!chatId) {
-          return;
-        }
-        if (subchatIndex === undefined) {
-          return;
-        }
+        if (!chatId) return;
+        if (subchatIndex === undefined) return;
 
         const url = new URL(window.location.href);
         url.searchParams.set('rewind', 'true');
 
         try {
-          await convex.mutation(api.messages.rewindChat, {
-            sessionId: sessionId as Id<'sessions'>,
-            chatId,
-            subchatIndex,
-            lastMessageRank: messageIndex,
+          const token = await getToken();
+          await fetch('/api/messages/rewind', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              sessionId,
+              chatId,
+              subchatIndex,
+              lastMessageRank: messageIndex,
+            }),
           });
-          // Reload the chat to show the rewound state
           window.location.replace(url.href);
         } catch (error) {
           console.error('Failed to rewind chat:', error);
@@ -136,6 +148,7 @@ export const Chat = memo(
         }
       }
     };
+
     const {
       recordRawPromptsForDebugging,
       maxCollapsedMessagesSize,
@@ -147,18 +160,14 @@ export const Chat = memo(
     } = useLaunchDarkly();
 
     const title = useStore(description);
-
     const { showChat } = useStore(chatStore);
-
     const [animationScope, animate] = useAnimate();
-
-    const apiKey = useQuery(api.apiKeys.apiKeyForCurrentMember);
-
     const [modelSelection, setModelSelection] = useLocalStorage<ModelSelection>('modelSelection', 'auto');
+
     const terminalInitializationOptions = useMemo(
       () => ({
         isReload,
-        shouldDeployConvexFunctions: hadSuccessfulDeploy || (!!subchats && subchats.length > 1),
+        shouldDeployOnInit: hadSuccessfulDeploy || (!!subchats && subchats.length > 1),
       }),
       [isReload, hadSuccessfulDeploy, subchats],
     );
@@ -166,7 +175,8 @@ export const Chat = memo(
     useEffect(() => {
       const url = new URL(window.location.href);
       if (url.searchParams.get('rewind') === 'true') {
-        toast.info('Successfully reverted changes. You may need to clear or migrate your Convex data.');
+        // ✅ Replaced: removed Convex-specific message
+        toast.info('Successfully reverted changes.');
       }
     }, []);
 
@@ -193,7 +203,6 @@ export const Chat = memo(
           return { hasMissingKey: false, requireKey: false };
         }
 
-        // Map models to their respective providers
         const MODEL_TO_PROVIDER_MAP: {
           [K in ModelSelection]: { providerName: ModelProvider; apiKeyField: 'value' | 'openai' | 'xai' | 'google' };
         } = {
@@ -208,15 +217,11 @@ export const Chat = memo(
           'gpt-4.1-mini': { providerName: 'openai', apiKeyField: 'openai' },
         };
 
-        // Get provider info for the current model
         const providerInfo = MODEL_TO_PROVIDER_MAP[model];
-
-        // Check if the API key for this provider is missing
         const keyValue = apiKey?.[providerInfo.apiKeyField];
         if (!keyValue || keyValue.trim() === '') {
           return { hasMissingKey: true, provider: providerInfo.providerName, requireKey };
         }
-
         return { hasMissingKey: false, requireKey };
       },
       [apiKey],
@@ -228,10 +233,10 @@ export const Chat = memo(
       | { type: 'MissingApiKey'; provider: ModelProvider; requireKey: boolean }
       | null
     >(null);
-    const teamSlug = useSelectedTeamSlug();
-    const usage = useUsage({ teamSlug });
+
+    // ✅ Replaced: useSelectedTeamSlug() → null (no team concept in your app)
+    const usage = useUsage({ teamSlug: null });
     const forceDisable = usage && !usage.isLoadingUsage && !usage.isPaidPlan && usage.usagePercentage > 200;
-    // Normally set manually, but you can force it by going way over quota (useful simulating this state)
     const disableChatMessage = forceDisable ? { type: 'ExceededQuota' as const } : _disableChatMessage;
 
     const [sendMessageInProgress, setSendMessageInProgress] = useState(false);
@@ -239,6 +244,7 @@ export const Chat = memo(
     const anthropicProviders: ProviderType[] =
       Math.random() < useAnthropicFraction ? ['Anthropic', 'Bedrock'] : ['Bedrock', 'Anthropic'];
 
+    // ✅ Replaced: getConvexAuthToken(convex) + getTokenUsage() → Clerk getToken + fetch
     const checkTokenUsage = useCallback(async () => {
       if (hasApiKeySet(modelSelection, useGeminiAuto, apiKey)) {
         setDisableChatMessage(null);
@@ -246,24 +252,29 @@ export const Chat = memo(
       }
 
       try {
-        const teamSlug = selectedTeamSlugStore.get();
-        if (!teamSlug) {
-          console.error('No team slug');
-          return; // Just return instead of throwing
-        }
-        const token = getConvexAuthToken(convex);
+        const token = await getToken();
         if (!token) {
-          console.error('No token');
-          return; // Just return instead of throwing
+          console.error('No auth token');
+          return;
         }
 
-        const tokenUsage = await getTokenUsage(VITE_PROVISION_HOST, token, teamSlug);
+        const res = await fetch('/api/usage/tokens', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          console.error('Failed to check token usage', res.status);
+          return;
+        }
+
+        const tokenUsage = await res.json();
+
         if (tokenUsage.status === 'error') {
           console.error('Failed to check for token usage', tokenUsage.httpStatus, tokenUsage.httpBody);
         } else {
           const { centitokensUsed, centitokensQuota, isTeamDisabled, isPaidPlan } = tokenUsage;
           if (centitokensUsed !== undefined && centitokensQuota !== undefined) {
-            console.log(`Convex tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`);
+            console.log(`Tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`);
             if (isTeamDisabled) {
               setDisableChatMessage({ type: 'TeamDisabled', isPaidPlan });
             } else if (!isPaidPlan && centitokensUsed > centitokensQuota && !hasAnyApiKeySet(apiKey)) {
@@ -276,26 +287,25 @@ export const Chat = memo(
       } catch (error) {
         captureException(error);
       }
-    }, [apiKey, convex, modelSelection, setDisableChatMessage, useGeminiAuto]);
+    }, [apiKey, getToken, modelSelection, setDisableChatMessage, useGeminiAuto]);
 
     const { messages, status, stop, append, setMessages, reload, error } = useChat({
       initialMessages,
       api: '/api/chat',
       sendExtraMessageFields: true,
-      experimental_prepareRequestBody: ({ messages }) => {
+      experimental_prepareRequestBody: async ({ messages }) => {
         const chatInitialId = initialIdStore.get();
-        const deploymentName = convexProjectStore.get()?.deploymentName;
-        const teamSlug = selectedTeamSlugStore.get();
-        const token = getConvexAuthToken(convex);
+
+        // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken
+        const token = await getToken();
         if (!token) {
-          throw new Error('No token');
+          throw new Error('No auth token');
         }
-        if (!teamSlug) {
-          throw new Error('No team slug');
-        }
+
         let modelProvider: ProviderType;
         const retries = retryState.get();
         let modelChoice: string | undefined = undefined;
+
         if (modelSelection === 'auto') {
           const providers: ProviderType[] = anthropicProviders;
           modelProvider = providers[retries.numFailures % providers.length];
@@ -327,6 +337,7 @@ export const Chat = memo(
           const _exhaustiveCheck: never = modelSelection;
           throw new Error(`Unknown model: ${_exhaustiveCheck}`);
         }
+
         let shouldDisableTools = false;
         if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
           const lastSystemMessage = messages[messages.length - 1];
@@ -346,6 +357,7 @@ export const Chat = memo(
             }
           }
         }
+
         const { messages: preparedMessages, collapsedMessages } = chatContextManager.current.prepareContext(
           messages,
           maxSizeForModel(modelSelection, maxCollapsedMessagesSize),
@@ -359,10 +371,8 @@ export const Chat = memo(
           firstUserMessage: messages.filter((message) => message.role == 'user').length == 1,
           chatInitialId,
           token,
-          teamSlug,
-          deploymentName,
+          // ✅ Removed: teamSlug, deploymentName (Convex specific)
           modelProvider,
-          // Fall back to the user's API key if the request has failed too many times
           userApiKey: retries.numFailures < MAX_RETRIES ? apiKey : { ...apiKey, preference: 'always' },
           shouldDisableTools,
           recordRawPromptsForDebugging,
@@ -413,23 +423,18 @@ export const Chat = memo(
           retryState.set({ numFailures: 0, nextRetry: Date.now() });
         }
         logger.debug('Finished streaming');
-
         await checkTokenUsage();
       },
     });
 
-    // Reset chat messages when the loaded subchat index changes. We don't want to reset the
-    // messages if `initialMessages` changes without a subchat index change.
     useEffect(() => {
       setMessages(initialMessages);
-      // Reset chat context manager state when switching subchats to prevent stale indices
       chatContextManager.current.reset();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [setMessages, syncState.subchatIndex]);
 
     setChefDebugProperty('messages', messages);
 
-    // AKA "processed messages," since parsing has side effects
     const { parsedMessages, parseMessages } = useMessageParser(partCache);
 
     setChefDebugProperty('parsedMessages', parsedMessages);
@@ -457,9 +462,7 @@ export const Chat = memo(
     const toolStatus = useCurrentToolStatus();
 
     const runAnimation = async () => {
-      if (chatStarted) {
-        return;
-      }
+      if (chatStarted) return;
 
       await Promise.all([
         animate('#suggestions', { opacity: 0, display: 'none' }, { duration: 0.1 }),
@@ -468,7 +471,6 @@ export const Chat = memo(
       ]);
 
       chatStore.setKey('started', true);
-
       setChatStarted(true);
     };
 
@@ -479,13 +481,14 @@ export const Chat = memo(
         (retries.numFailures >= MAX_RETRIES || now < retries.nextRetry) &&
         !hasApiKeySet(modelSelection, useGeminiAuto, apiKey)
       ) {
-        let message: string | ReactNode = 'Chef is too busy cooking right now. ';
+        let message: string | ReactNode = 'Too busy right now. ';
         if (retries.numFailures >= MAX_RETRIES) {
           message = (
             <>
               {message}
               Please{' '}
-              <a href="https://chef.convex.dev/settings" className="text-content-link hover:underline">
+              {/* ✅ Replaced: chef.convex.dev → /settings */}
+              <a href="/settings" className="text-content-link hover:underline">
                 enter your own API key
               </a>
               .
@@ -497,7 +500,7 @@ export const Chat = memo(
             <>
               {message}
               Please try again in {remaining} or{' '}
-              <a href="https://chef.convex.dev/settings" className="text-content-link hover:underline">
+              <a href="/settings" className="text-content-link hover:underline">
                 enter your own API key
               </a>
               .
@@ -505,7 +508,7 @@ export const Chat = memo(
           );
         }
         toast.error(message);
-        captureMessage('User tried to send message but chef is too busy');
+        captureMessage('User tried to send message but server is too busy');
         return;
       }
 
@@ -519,15 +522,13 @@ export const Chat = memo(
         console.log('sendMessage already in progress, returning.');
         return;
       }
+
       try {
         setSendMessageInProgress(true);
-
         enableAutoScroll();
 
         const chatInitialized = await initializeChat();
-        if (!chatInitialized) {
-          return;
-        }
+        if (!chatInitialized) return;
 
         runAnimation();
 
@@ -544,13 +545,10 @@ export const Chat = memo(
               parts: [],
             };
 
-        // Make a clone of the relevantFilesMessage so we can inject the modified message after relevant files before the messageInput later
         const newMessage = structuredClone(maybeRelevantFilesMessage);
-        newMessage.parts.push({
-          type: 'text',
-          text: messageInput,
-        });
+        newMessage.parts.push({ type: 'text', text: messageInput });
         newMessage.content = messageInput;
+
         if (!chatStarted) {
           setMessages([newMessage]);
           reload();
@@ -561,17 +559,11 @@ export const Chat = memo(
         chatStore.setKey('aborted', false);
         if (modifiedFiles !== undefined) {
           const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
-          maybeRelevantFilesMessage.parts.push({
-            type: 'text',
-            text: userUpdateArtifact,
-          });
+          maybeRelevantFilesMessage.parts.push({ type: 'text', text: userUpdateArtifact });
           workbenchStore.resetAllFileModifications();
         }
         maybeRelevantFilesMessage.content = messageInput;
-        maybeRelevantFilesMessage.parts.push({
-          type: 'text',
-          text: messageInput,
-        });
+        maybeRelevantFilesMessage.parts.push({ type: 'text', text: messageInput });
         append(maybeRelevantFilesMessage);
       } finally {
         setSendMessageInProgress(false);
@@ -584,9 +576,7 @@ export const Chat = memo(
       async (newModel: ModelSelection) => {
         setModelSelection(newModel);
 
-        // First check if we have a key for this model, which is the most important case
         if (hasApiKeySet(newModel, useGeminiAuto, apiKey)) {
-          // If we have a key for this model, clear the message and exit early
           setDisableChatMessage(null);
           return;
         }
@@ -594,10 +584,8 @@ export const Chat = memo(
         const { hasMissingKey, provider, requireKey } = checkApiKeyForCurrentModel(newModel);
 
         if (hasMissingKey && provider) {
-          // If the model requires a key that's not set, show the message
           setDisableChatMessage({ type: 'MissingApiKey', provider, requireKey });
         } else {
-          // For other cases (like free tier or no key required), check full token usage
           await checkTokenUsage().catch((error) => {
             console.error('Error checking token usage after model change:', error);
           });
@@ -620,7 +608,7 @@ export const Chat = memo(
           streamStatus={status}
           currentError={error}
           toolStatus={toolStatus}
-          messages={parsedMessages /* Note that parsedMessages are throttled. */}
+          messages={parsedMessages}
           actionAlert={actionAlert}
           clearAlert={() => workbenchStore.clearAlert()}
           terminalInitializationOptions={terminalInitializationOptions}
@@ -661,13 +649,9 @@ function useCurrentToolStatus() {
     const partSubscriptions: Record<PartId, () => void> = {};
     const subscribe = async () => {
       artifactSubscription = workbenchStore.artifacts.subscribe((artifacts) => {
-        if (canceled) {
-          return;
-        }
+        if (canceled) return;
         for (const [partId, artifactState] of Object.entries(artifacts)) {
-          if (partSubscriptions[partId as PartId]) {
-            continue;
-          }
+          if (partSubscriptions[partId as PartId]) continue;
           const { actions } = artifactState.runner;
           const sub = actions.subscribe((actionsMap) => {
             for (const [id, action] of Object.entries(actionsMap)) {
@@ -701,27 +685,10 @@ function exponentialBackoff(numFailures: number) {
   return delay;
 }
 
-/**
- * We send the auth token in big brain requests. The Convex client already makes
- * sure it has an up-to-date auth token, so we just need to extract it.
- *
- * This is especially convenient in functions that are not async.
- *
- * Since there's not a public API for this, we internally type cast.
- */
-function getConvexAuthToken(convex: ConvexReactClient): string | null {
-  const token = (convex as any)?.sync?.state?.auth?.value;
-  if (!token) {
-    return null;
-  }
-  return token;
-}
+// ✅ Removed: getConvexAuthToken() — replaced by Clerk getToken() inline
 
+// ✅ Replaced: NoTokensText — removed Convex billing URLs + TeamSelector + referral system
 export function NoTokensText({ resetDisableChatMessage }: { resetDisableChatMessage: () => void }) {
-  const selectedTeamSlug = useSelectedTeamSlug();
-  const referralCode = useReferralCode();
-  const referralStats = useReferralStats();
-
   const copyToClipboard = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard!');
@@ -731,55 +698,22 @@ export function NoTokensText({ resetDisableChatMessage }: { resetDisableChatMess
     <div className="flex w-full flex-col gap-4">
       <h4>You&apos;ve used all the tokens included with your free plan.</h4>
       <div className="flex flex-wrap items-center gap-2">
-        <TeamSelector
-          selectedTeamSlug={selectedTeamSlug}
-          setSelectedTeamSlug={(slug) => {
-            setSelectedTeamSlug(slug);
-            resetDisableChatMessage();
-          }}
-        />
         <Button href="/settings" icon={<KeyIcon className="size-4" />} variant="neutral">
           Add your own API key
         </Button>
         <Button
-          href={
-            selectedTeamSlug
-              ? `https://dashboard.convex.dev/t/${selectedTeamSlug}/settings/billing?source=chef`
-              : 'https://dashboard.convex.dev/team/settings/billing?source=chef'
-          }
+          href="/settings/billing"
           className="w-fit"
           icon={<ExternalLinkIcon />}
         >
           Upgrade to a paid plan
         </Button>
-        {referralCode && referralStats?.left !== 0 && (
-          <div className="w-full space-y-2">
-            <p className="text-sm text-content-secondary">
-              Refer a friend and Get 85,000 free Chef tokens for each
-              {referralStats?.left === 5 || !referralStats ? ' (limit 5)' : ` (${referralStats.left} / 5)`}
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value={`https://convex.dev/try-chef/${referralCode}`}
-                className="flex-1 rounded-md border bg-bolt-elements-background-depth-2 px-3 py-1.5 text-sm text-content-primary"
-              />
-              <Button
-                variant="neutral"
-                size="xs"
-                onClick={() => copyToClipboard(`https://convex.dev/try-chef/${referralCode}`)}
-                tip="Copy link"
-                icon={<ClipboardIcon />}
-              />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
+// ✅ Replaced: DisabledText — removed Convex billing URLs + TeamSelector
 export function DisabledText({
   isPaidPlan,
   resetDisableChatMessage,
@@ -787,7 +721,6 @@ export function DisabledText({
   isPaidPlan: boolean;
   resetDisableChatMessage: () => void;
 }) {
-  const selectedTeamSlug = useSelectedTeamSlug();
   return (
     <div className="flex w-full flex-col gap-4">
       <h3>
@@ -796,19 +729,8 @@ export function DisabledText({
           : "You've exceeded the free plan limits, so your deployments have been disabled."}
       </h3>
       <div className="flex flex-wrap items-center gap-2">
-        <TeamSelector
-          selectedTeamSlug={selectedTeamSlug}
-          setSelectedTeamSlug={(slug) => {
-            setSelectedTeamSlug(slug);
-            resetDisableChatMessage();
-          }}
-        />
         <Button
-          href={
-            selectedTeamSlug
-              ? `https://dashboard.convex.dev/t/${selectedTeamSlug}/settings/billing?source=chef`
-              : 'https://dashboard.convex.dev/team/settings/billing?source=chef'
-          }
+          href="/settings/billing"
           className="w-fit"
           icon={<ExternalLinkIcon />}
         >
@@ -826,7 +748,6 @@ function maxSizeForModel(modelSelection: ModelSelection, maxSize: number) {
     case 'gemini-2.5-pro':
       return maxSize;
     default:
-      // For non-anthropic models not yet using caching, use a lower message size limit.
       return 8192;
   }
 }

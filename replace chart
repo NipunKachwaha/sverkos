@@ -1,0 +1,9 @@
+app/layout.tsx
+app/page.tsx
+app/global.css
+app/Components/Blurtext.tsx
+app/Components/CapabilitiesSection.tsx
+app/Components/FadingVideo.tsx
+app/Components/Icons.tsx
+app/Components/Navbar.tsx
+app/Components/HeroSection.tsx

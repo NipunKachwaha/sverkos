@@ -1,5 +1,0 @@
-git add .
-git commit -m "update code"
-git push
-
-npx svix-cli listen http://localhost:3000/api/webhooks/clerk

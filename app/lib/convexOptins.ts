@@ -1,6 +1,6 @@
 import type { ConvexReactClient } from 'convex/react';
 import { getConvexAuthToken } from './stores/sessionId';
-import { VITE_PROVISION_HOST } from './convexProvisionHost';
+import { VITE_PROVISION_HOST } from './provisionHost';
 
 type OptInToAccept = {
   optIn: {

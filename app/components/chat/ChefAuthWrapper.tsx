@@ -1,18 +1,14 @@
-import { useConvex } from 'convex/react';
+'use client';
 
-import { useConvexAuth } from 'convex/react';
+import { useAuth, useUser } from '@clerk/nextjs';
 import { createContext, useContext, useEffect, useRef } from 'react';
-
-import { sessionIdStore } from '~/lib/stores/sessionId';
-
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
-import type { Id } from '@convex/_generated/dataModel';
 import { useLocalStorage } from '@uidotdev/usehooks';
-import { api } from '@convex/_generated/api';
 import { toast } from 'sonner';
-import { fetchOptIns } from '~/lib/convexOptins';
-import { setChefDebugProperty } from 'chef-agent/utils/chefDebug';
-import { useAuth } from '@workos-inc/authkit-react';
+import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+// Replaced Convex Id<'sessions'> with plain string (Clerk userId)
+
 type ChefAuthState =
   | {
       kind: 'loading';
@@ -22,8 +18,10 @@ type ChefAuthState =
     }
   | {
       kind: 'fullyLoggedIn';
-      sessionId: Id<'sessions'>;
+      sessionId: string; // was: Id<'sessions'> — now Clerk userId
     };
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const ChefAuthContext = createContext<{
   state: ChefAuthState;
@@ -45,7 +43,9 @@ export function useChefAuthContext() {
   return state;
 }
 
-export const SESSION_ID_KEY = 'sessionIdForConvex';
+export const SESSION_ID_KEY = 'sessionIdForClerk';
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const ChefAuthProvider = ({
   children,
@@ -54,48 +54,60 @@ export const ChefAuthProvider = ({
   children: React.ReactNode;
   redirectIfUnauthenticated: boolean;
 }) => {
-  const sessionId = useConvexSessionIdOrNullOrLoading();
-  const convex = useConvex();
-  const { isAuthenticated, isLoading: isConvexAuthLoading } = useConvexAuth();
-  const [sessionIdFromLocalStorage, setSessionIdFromLocalStorage] = useLocalStorage<Id<'sessions'> | null>(
+  // Replaced: useConvex() + useConvexAuth() + useAuth(WorkOS) → Clerk hooks
+  const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { user } = useUser();
+
+  const isAuthenticated = !!isSignedIn;
+  const isAuthLoading = !isLoaded;
+
+  const [sessionIdFromLocalStorage, setSessionIdFromLocalStorage] = useLocalStorage<string | null>(
     SESSION_ID_KEY,
     null,
   );
+
   const hasAlertedAboutOptIns = useRef(false);
   const authRetries = useRef(0);
-  const { getAccessToken } = useAuth();
+
+  // Replaced: useConvexSessionIdOrNullOrLoading() → derived from Clerk
+  const sessionId: string | null | undefined = !isLoaded
+    ? undefined        // still loading
+    : !isSignedIn
+      ? null           // unauthenticated
+      : user?.id ?? null; // logged in — use Clerk userId as sessionId
 
   useEffect(() => {
-    function setSessionId(sessionId: Id<'sessions'> | null) {
-      setSessionIdFromLocalStorage(sessionId);
-      sessionIdStore.set(sessionId);
-      if (sessionId) {
-        setChefDebugProperty('sessionId', sessionId);
+    function setSession(id: string | null) {
+      setSessionIdFromLocalStorage(id);
+      // Replaced: sessionIdStore.set(id) → localStorage only (via useLocalStorage above)
+      if (id) {
+        setChefDebugProperty('sessionId', id);
       }
     }
 
-    const isUnauthenticated = !isAuthenticated && !isConvexAuthLoading;
+    const isUnauthenticated = !isAuthenticated && !isAuthLoading;
 
     if (sessionId === undefined && isUnauthenticated) {
-      setSessionId(null);
+      setSession(null);
       return undefined;
     }
 
     if (sessionId !== null && isUnauthenticated) {
-      setSessionId(null);
+      setSession(null);
       return undefined;
     }
+
     let verifySessionTimeout: ReturnType<typeof setTimeout> | null = null;
 
     async function verifySession() {
       if (sessionIdFromLocalStorage) {
-        // Seems like auth might not automatically refresh its state, so call this to kick it
+        // Replaced: WorkOS getAccessToken({}) → Clerk getToken()
         try {
-          // Call this to prove that WorkOS is set up
-          await getAccessToken({});
+          const token = await getToken();
+          if (!token) throw new Error('No Clerk token available');
           authRetries.current = 0;
         } catch (_e) {
-          console.error('Unable to fetch access token from WorkOS');
+          console.error('Unable to fetch access token from Clerk');
           if (authRetries.current < 3 && verifySessionTimeout === null) {
             authRetries.current++;
             verifySessionTimeout = setTimeout(() => {
@@ -104,80 +116,80 @@ export const ChefAuthProvider = ({
           }
           return;
         }
+
         if (!isAuthenticated) {
-          // Wait until auth is propagated to Convex before we try to verify the session
+          // Wait until Clerk auth is fully propagated
           return;
         }
-        let isValid: boolean = false;
-        try {
-          isValid = await convex.query(api.sessions.verifySession, {
-            sessionId: sessionIdFromLocalStorage as Id<'sessions'>,
-          });
-        } catch (error) {
-          console.error('Error verifying session', error);
-          toast.error('Unexpected error verifying credentials');
-          setSessionId(null);
-        }
+
+        // Replaced: convex.query(api.sessions.verifySession) 
+        // → Clerk handles session validity automatically
+        const isValid = isAuthenticated && !!user?.id;
+
         if (isValid) {
-          const optIns = await fetchOptIns(convex);
-          if (optIns.kind === 'loaded' && optIns.optIns.length === 0) {
-            setSessionId(sessionIdFromLocalStorage as Id<'sessions'>);
-          }
-          if (!hasAlertedAboutOptIns.current && optIns.kind === 'loaded' && optIns.optIns.length > 0) {
-            toast.info('Please accept the Convex Terms of Service to continue');
+          // Replaced: fetchOptIns(convex) 
+          // → No Convex opt-ins needed; Clerk + your own TOS flow handles this
+          if (!hasAlertedAboutOptIns.current) {
+            // If you add your own TOS/opt-in check via Supabase, do it here
             hasAlertedAboutOptIns.current = true;
           }
-          if (hasAlertedAboutOptIns.current && optIns.kind === 'error') {
-            toast.error('Unexpected error setting up your account.');
-          }
+          setSession(user!.id);
         } else {
-          // Clear it, the next loop around we'll try creating a new session
-          // if we're authenticated.
-          setSessionId(null);
+          setSession(null);
         }
       }
 
-      if (isAuthenticated) {
+      if (isAuthenticated && user?.id) {
         try {
-          const sessionId = await convex.mutation(api.sessions.startSession);
-          setSessionId(sessionId);
+          // Replaced: convex.mutation(api.sessions.startSession)
+          // → Clerk userId IS the session — no separate session creation needed
+          setSession(user.id);
         } catch (error) {
-          console.error('Error creating session', error);
-          setSessionId(null);
+          console.error('Error setting session', error);
+          toast.error('Unexpected error verifying credentials');
+          setSession(null);
         }
       }
+
       return;
     }
 
     void verifySession();
+
     return () => {
       if (verifySessionTimeout) {
         clearTimeout(verifySessionTimeout);
       }
     };
   }, [
-    convex,
     sessionId,
     isAuthenticated,
-    isConvexAuthLoading,
+    isAuthLoading,
     sessionIdFromLocalStorage,
     setSessionIdFromLocalStorage,
-    getAccessToken,
+    getToken,
+    user,
   ]);
 
-  const isLoading = sessionId === undefined || isConvexAuthLoading;
+  // State shape same as original — only type changed from Id<'sessions'> to string
+  const isLoading = sessionId === undefined || isAuthLoading;
   const isUnauthenticated = sessionId === null || !isAuthenticated;
+
   const state: ChefAuthState = isLoading
     ? { kind: 'loading' }
     : isUnauthenticated
       ? { kind: 'unauthenticated' }
-      : { kind: 'fullyLoggedIn', sessionId: sessionId as Id<'sessions'> };
+      : { kind: 'fullyLoggedIn', sessionId: sessionId as string };
 
+  // Same redirect logic as original
   if (redirectIfUnauthenticated && state.kind === 'unauthenticated') {
     console.log('redirecting to /');
-    // Hard navigate to avoid any potential state leakage
     window.location.href = '/';
   }
 
-  return <ChefAuthContext.Provider value={{ state }}>{children}</ChefAuthContext.Provider>;
+  return (
+    <ChefAuthContext.Provider value={{ state }}>
+      {children}
+    </ChefAuthContext.Provider>
+  );
 };

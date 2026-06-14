@@ -1,15 +1,16 @@
-import { useConvexChatExisting } from '~/lib/stores/startup';
+'use client'
+import { useConvexChatExisting } from '../lib/stores/startup';
 import { Chat } from './chat/Chat';
 import { ChefAuthProvider } from './chat/ChefAuthWrapper';
-import { setPageLoadChatId } from '~/lib/stores/chatId';
-import { sessionIdStore } from '~/lib/stores/sessionId';
+import { setPageLoadChatId } from '../lib/stores/chatId';
+import { sessionIdStore } from '../lib/stores/sessionId';
 import { Loading } from './Loading';
 import { useStore } from '@nanostores/react';
-import { ContainerBootState, useContainerBootState } from '~/lib/stores/containerBootState';
-import { useReloadMessages } from '~/lib/stores/startup/reloadMessages';
-import { useSplines } from '~/lib/splines';
-import { UserProvider } from '~/components/UserProvider';
-import { Toaster } from '~/components/ui/Toaster';
+import { ContainerBootState, useContainerBootState } from '../lib/stores/containerBootState';
+import { useReloadMessages } from '../lib/stores/startup/reloadMessages';
+import { useSplines } from '../lib/splines';
+import { UserProvider } from '../components/UserProvider';
+import { Toaster } from '../components/ui/Toaster';
 
 export function ExistingChat({ chatId }: { chatId: string }) {
   // Fill in the chatID store from props early in app initialization. If this

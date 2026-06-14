@@ -10,7 +10,7 @@ import { useAuth } from "@clerk/nextjs"
 import localFont from 'next/font/local'
 
 const Zaslia = localFont({
-  src: '../public/fonts/Zaslia.otf',
+  src: '../../public/fonts/Zaslia.otf',
   display: 'swap',
 })
 
