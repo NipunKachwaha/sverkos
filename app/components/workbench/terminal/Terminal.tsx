@@ -2,8 +2,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Terminal as XTerm } from '@xterm/xterm';
 import { memo, useEffect, useRef } from 'react';
-import type { Theme } from '~/lib/stores/theme';
-import { createScopedLogger } from 'chef-agent/utils/logger';
+import type { Theme } from '../../../lib/stores/theme';
+import { createScopedLogger } from '../../../../lib/agent/utils/logger';
 import { getTerminalTheme } from './theme';
 
 const logger = createScopedLogger('Terminal');

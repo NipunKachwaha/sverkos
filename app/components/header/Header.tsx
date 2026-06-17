@@ -1,26 +1,28 @@
+'use client';
+
 import { useStore } from '@nanostores/react';
 import { useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
-import { chatStore } from '~/lib/stores/chatId';
+import { chatStore } from '../../lib/stores/chatId';
 import { HeaderActionButtons } from './HeaderActionButtons.client';
-import { ChatDescription } from '~/components/header/ChatDescription.client';
+import { ChatDescription } from './ChatDescription.client';
 import { DeployButton } from './DeployButton';
 import { ShareButton } from './ShareButton';
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
+import { useConvexSessionIdOrNullOrLoading } from '../../lib/stores/sessionId';
 import { HamburgerMenuIcon, PersonIcon, GearIcon, ExitIcon } from '@radix-ui/react-icons';
 import { DownloadButton } from './DownloadButton';
 import { LoggedOutHeaderButtons } from './LoggedOutHeaderButtons';
-import { profileStore, setProfile } from '~/lib/stores/profile';
+import { profileStore, setProfile } from '../../lib/stores/profile';
 import { Menu as MenuComponent, MenuItem as MenuItemComponent } from '@ui/Menu';
-import { SESSION_ID_KEY } from '~/components/chat/ChefAuthWrapper';
+import { SESSION_ID_KEY } from '../chat/ChefAuthWrapper';
 import { FeedbackButton } from './FeedbackButton';
 import { DiscordButton } from './DiscordButton';
 import { PromptDebugButton } from './PromptDebugButton';
 import { ReferButton } from './ReferButton';
-import { useSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { useUsage } from '~/lib/stores/usage';
-import { useReferralStats } from '~/lib/hooks/useReferralCode';
-import { Menu } from '~/components/sidebar/Menu.client';
+import { useSelectedTeamSlug } from '../../lib/stores/convexTeams';
+import { useUsage } from '../../lib/stores/usage';
+import { useReferralStats } from '../../lib/hooks/useReferralCode';
+import { Menu } from '../sidebar/Menu.client';
 import { useAuth } from '@workos-inc/authkit-react';
 
 export function Header({ hideSidebarIcon = false }: { hideSidebarIcon?: boolean }) {

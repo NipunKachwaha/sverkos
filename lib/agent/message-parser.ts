@@ -1,8 +1,8 @@
-import type { PartId } from './partId.js';
-import type { BoltAction, BoltArtifactData, ActionType, FileAction } from './types.js';
-import { createScopedLogger } from './utils/logger.js';
-import { getRelativePath } from './utils/workDir.js';
-import { unreachable } from './utils/unreachable.js';
+import type { PartId } from './partId';
+import type { BoltAction, BoltArtifactData, ActionType, FileAction } from './types';
+import { createScopedLogger } from './utils/logger';
+import { getRelativePath } from './utils/workDir';
+import { unreachable } from './utils/unreachable';
 
 const ARTIFACT_TAG_OPEN = '<boltArtifact';
 const ARTIFACT_TAG_CLOSE = '</boltArtifact>';

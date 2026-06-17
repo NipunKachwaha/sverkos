@@ -1,10 +1,10 @@
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
-import { ApiKeyCard } from '~/components/settings/ApiKeyCard';
-import { ThemeCard } from '~/components/settings/ThemeCard';
-import { ProfileCard } from '~/components/settings/ProfileCard';
-import { UsageCard } from '~/components/settings/UsageCard';
-import { Toaster } from '~/components/ui/Toaster';
-import { UserProvider } from '~/components/UserProvider';
+import { ApiKeyCard } from './settings/ApiKeyCard';
+import { ThemeCard } from './settings/ThemeCard';
+import { ProfileCard } from './settings/ProfileCard';
+import { UsageCard } from './settings/UsageCard';
+import { Toaster } from './ui/Toaster';
+import { UserProvider } from './UserProvider';
 
 export function SettingsContent() {
   return (

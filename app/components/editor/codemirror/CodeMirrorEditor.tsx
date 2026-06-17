@@ -18,16 +18,16 @@ import {
   type Tooltip,
 } from '@codemirror/view';
 import { memo, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import type { Theme } from '~/types/theme';
-import { classNames } from '~/utils/classNames';
-import { debounce } from '~/utils/debounce';
-import { createScopedLogger, renderLogger } from 'chef-agent/utils/logger';
+import type { Theme } from '../../../types/theme';
+import { classNames } from '../../../utils/classNames';
+import { debounce } from '../../../utils/debounce';
+import { createScopedLogger, renderLogger } from '../../../../lib/agent/utils/logger';
 import { BinaryContent } from './BinaryContent';
 import { getTheme, reconfigureTheme } from './cm-theme';
 import { indentKeyBinding } from './indent';
 import { getLanguage } from './languages';
-import type { EditorDocument } from 'chef-agent/types';
-import type { ScrollPosition } from 'chef-agent/types';
+import type { EditorDocument } from '../../../../lib/agent/types';
+import type { ScrollPosition } from '../../../../lib/agent/types';
 const logger = createScopedLogger('CodeMirrorEditor');
 
 export interface EditorSettings {

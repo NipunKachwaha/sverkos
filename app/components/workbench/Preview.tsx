@@ -1,11 +1,11 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
-import { IconButton } from '~/components/ui/IconButton';
-import { workbenchStore } from '~/lib/stores/workbench.client';
+import { IconButton } from '../ui/IconButton';
+import { workbenchStore } from '../../lib/stores/workbench.client';
 import { PortDropdown } from './PortDropdown';
 import { Spinner } from '@ui/Spinner';
 import { UpdateIcon, MobileIcon, ExternalLinkIcon, CrossCircledIcon, ImageIcon } from '@radix-ui/react-icons';
-import * as Sentry from '@sentry/remix';
+import * as Sentry from '@sentry/nextjs';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ThumbnailChooser } from './ThumbnailChooser';
 

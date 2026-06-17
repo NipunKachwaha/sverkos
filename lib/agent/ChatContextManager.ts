@@ -1,15 +1,15 @@
 import { type ToolInvocation, type UIMessage } from 'ai';
-import { type AbsolutePath, getAbsolutePath } from './utils/workDir.js';
-import { type Dirent, type EditorDocument, type FileMap } from './types.js';
-import { PREWARM_PATHS, WORK_DIR } from './constants.js';
-import { renderFile } from './utils/renderFile.js';
-import { StreamingMessageParser } from './message-parser.js';
-import { makePartId, type PartId } from './partId.js';
-import { viewParameters } from './tools/view.js';
-import { editToolParameters } from './tools/edit.js';
-import { loggingSafeParse } from './utils/zodUtil.js';
-import { npmInstallToolParameters } from './tools/npmInstall.js';
-import { path } from './utils/path.js';
+import { type AbsolutePath, getAbsolutePath } from './utils/workDir';
+import { type Dirent, type EditorDocument, type FileMap } from './types';
+import { PREWARM_PATHS, WORK_DIR } from './constants';
+import { renderFile } from './utils/renderFile';
+import { StreamingMessageParser } from './message-parser';
+import { makePartId, type PartId } from './partId';
+import { viewParameters } from './tools/view';
+import { editToolParameters } from './tools/edit';
+import { loggingSafeParse } from './utils/zodUtil';
+import { npmInstallToolParameters } from './tools/npmInstall';
+import { path } from './utils/path';
 
 const MAX_RELEVANT_FILES = 16;
 

@@ -1,8 +1,8 @@
-import { api } from '@convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import { Button } from '@ui/Button';
 import { usePreloadedQuery, useQuery, type Preloaded } from 'convex/react';
 import { useState, type FC } from 'react';
-import { classNames } from '~/utils/classNames';
+import { classNames } from '../utils/classNames';
 
 function generateDefaultAvatar(username: string): string {
   // Get initials (up to 2 characters)

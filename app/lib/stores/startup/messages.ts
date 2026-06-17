@@ -1,13 +1,13 @@
 import type { Message } from '@ai-sdk/react';
 import { atom } from 'nanostores';
-import { getConvexSiteUrl } from '~/lib/convexSiteUrl';
-import { getKnownUrlId, setKnownInitialId, setKnownUrlId } from '~/lib/stores/chatId';
-import type { Id } from '@convex/_generated/dataModel';
+import { getConvexSiteUrl } from '../../convexSiteUrl';
+import { getKnownUrlId, setKnownInitialId, setKnownUrlId } from '../chatId';
+import type { Id } from '@/convex/_generated/dataModel';
 import type { ConvexReactClient } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import { description as descriptionStore } from '~/lib/stores/description';
-import { compressWithLz4 } from '~/lib/compression';
-import { stripMetadata } from '~/components/chat/UserMessage';
+import { api } from '@/convex/_generated/api';
+import { description as descriptionStore } from '../description';
+import { compressWithLz4 } from '../../compression';
+import { stripMetadata } from '../../../components/chat/UserMessage';
 
 type CompleteMessageInfo = {
   messageIndex: number;

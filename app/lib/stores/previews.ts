@@ -1,7 +1,9 @@
+'use client';
+
 import type { WebContainer } from '@webcontainer/api';
 import { atom } from 'nanostores';
-import { createScopedLogger } from 'chef-agent/utils/logger';
-import { withResolvers } from '~/utils/promises';
+import { createScopedLogger } from '../../../lib/agent/utils/logger';
+import { withResolvers } from '../../utils/promises';
 
 export interface PreviewInfo {
   port: number;

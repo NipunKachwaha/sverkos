@@ -1,24 +1,23 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import type { ToolStatus } from '~/lib/common/types';
+import type { ToolStatus } from '../../lib/common/types';
 import { toast } from 'sonner';
-import { classNames } from '~/utils/classNames';
+import { classNames } from '../../utils/classNames';
 import { useStore } from '@nanostores/react';
-import { chatStore } from '~/lib/stores/chatId';
-import { Spinner } from '@ui/Spinner';
+import { chatStore } from '../../lib/stores/chatId';
+import { Spinner } from '../../components/ui/SpinnerThreeDots';
 import { ExclamationTriangleIcon, CheckCircledIcon, ResetIcon, ClipboardIcon } from '@radix-ui/react-icons';
 import { useEffect, useState } from 'react';
-import { Button } from '@ui/Button';
-import { useUsage } from '~/lib/stores/usage';
-import { Donut } from '@ui/Donut';
-import { Loading } from '@ui/Loading';
-import { useSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { useReferralCode, useReferralStats } from '~/lib/hooks/useReferralCode';
-import { Popover } from '@ui/Popover';
-import { hasApiKeySet } from '~/lib/common/apiKey';
-import type { ModelSelection } from '~/utils/constants';
-import { useLaunchDarkly } from '~/lib/hooks/useLaunchDarkly';
-import { useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
+import { IconButton as Button } from '../ui/IconButton';
+import { useUsage } from '../../lib/stores/usage';
+import { Donut } from '../../components/ui/Donut';
+import { Loading } from '../../components/ui/Loading';
+import { useSelectedTeamSlug } from '../../lib/stores/convexTeams';
+import { useReferralCode, useReferralStats } from '../../lib/hooks/useReferralCode';
+import { Popover } from '../../components/ui/Popover';
+import { hasApiKeySet } from '../../lib/common/apiKey';
+import type { ModelSelection } from '../../utils/constants';
+import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
+import { useAuth } from '@clerk/nextjs';
 
 type StreamStatus = 'streaming' | 'submitted' | 'ready' | 'error';
 
@@ -253,7 +252,34 @@ function LittleUsage({
   const referralCode = useReferralCode();
   const loading = isLoadingUsage || !referralStats || !referralCode || !teamSlug;
   const { useGeminiAuto } = useLaunchDarkly();
-  const apiKey = useQuery(api.apiKeys.apiKeyForCurrentMember);
+
+  // ✅ Replaced: useQuery(api.apiKeys.apiKeyForCurrentMember) → fetch via Clerk
+  const { getToken } = useAuth();
+  const [apiKey, setApiKey] = useState<{
+    preference?: string;
+    value?: string;
+    openai?: string;
+    xai?: string;
+    google?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchApiKey = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/api-keys/current', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setApiKey(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch api key', error);
+      }
+    };
+    void fetchApiKey();
+  }, [getToken]);
 
   useEffect(() => {
     if (streamStatus === 'ready') {

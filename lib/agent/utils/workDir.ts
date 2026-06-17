@@ -1,5 +1,5 @@
-import { WORK_DIR } from '../constants.js';
-import { path } from './path.js';
+import { WORK_DIR } from '../constants';
+import { path } from './path';
 
 // Relative to `WORK_DIR`
 export type RelativePath = string & { __brand: 'RelativePath' };

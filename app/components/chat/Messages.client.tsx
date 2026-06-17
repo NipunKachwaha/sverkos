@@ -1,20 +1,20 @@
 import type { Message } from 'ai';
 import { Fragment, useCallback, useState } from 'react';
-import { classNames } from '~/utils/classNames';
+import { classNames } from '../../utils/classNames';
 import { AssistantMessage } from './AssistantMessage';
 import { UserMessage } from './UserMessage';
 import { useStore } from '@nanostores/react';
-import { profileStore } from '~/lib/stores/profile';
+import { profileStore } from '../../lib/stores/profile';
 import { forwardRef } from 'react';
 import type { ForwardedRef } from 'react';
-import { SpinnerThreeDots } from '~/components/ui/SpinnerThreeDots';
+import { SpinnerThreeDots } from '../ui/SpinnerThreeDots';
 import { PersonIcon } from '@radix-ui/react-icons';
 import { ResetIcon } from '@radix-ui/react-icons';
 import { ChatBubbleIcon } from '@radix-ui/react-icons';
-import { Button } from '@ui/Button';
-import { Modal } from '@ui/Modal';
-import { useEarliestRewindableMessageRank } from '~/lib/hooks/useEarliestRewindableMessageRank';
-import { subchatIndexStore } from '~/lib/stores/subchats';
+import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
+import { useEarliestRewindableMessageRank } from '../../lib/hooks/useEarliestRewindableMessageRank';
+import { subchatIndexStore } from '../../lib/stores/subchats';
 
 interface MessagesProps {
   id?: string;

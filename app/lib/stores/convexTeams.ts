@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { atom } from 'nanostores';
-import { getLocalStorage, setLocalStorage } from '~/lib/persistence';
+import { getLocalStorage, setLocalStorage } from '../../lib/persistence';
 
 export type ConvexTeam = {
   id: string;

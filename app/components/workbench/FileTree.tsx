@@ -1,12 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { FileMap } from 'chef-agent/types';
-import { classNames } from '~/utils/classNames';
-import { createScopedLogger, renderLogger } from 'chef-agent/utils/logger';
+import type { FileMap } from '../../../lib/agent/types';
+import { classNames } from '../../utils/classNames';
+import { createScopedLogger, renderLogger } from '../../../lib/agent/utils/logger';
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import type { FileHistory } from '~/types/actions';
+import type { FileHistory } from '../../types/actions';
 import { diffLines, type Change } from 'diff';
 import { CaretRightIcon, CaretDownIcon, FileIcon } from '@radix-ui/react-icons';
-import { DEFAULT_COLLAPSED_FOLDERS } from '~/utils/constants';
+import { DEFAULT_COLLAPSED_FOLDERS } from '../../utils/constants';
 
 const logger = createScopedLogger('FileTree');
 

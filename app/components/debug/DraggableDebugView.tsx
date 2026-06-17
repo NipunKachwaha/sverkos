@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { IconButton } from '~/components/ui/IconButton';
+import { IconButton } from '../ui/IconButton';
 import { Cross2Icon, DragHandleDots2Icon } from '@radix-ui/react-icons';
 
 interface DraggableDebugViewProps {

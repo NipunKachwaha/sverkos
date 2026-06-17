@@ -1,14 +1,14 @@
-import { Button } from '@ui/Button';
+import { IconButton as Button } from '../ui/IconButton';
 import { ArrowLeftIcon, ArrowRightIcon, PlusIcon, ResetIcon } from '@radix-ui/react-icons';
-import { classNames } from '~/utils/classNames';
-import type { Id } from '@convex/_generated/dataModel';
+import { classNames } from '../../utils/classNames';
+import type { Id } from '@/convex/_generated/dataModel';
 import { useCallback, useState } from 'react';
 import { Modal } from '@ui/Modal';
 import { Combobox } from '@ui/Combobox';
-import { TimestampDistance } from '~/components/ui/TimestampDistance';
-import { subchatIndexStore } from '~/lib/stores/subchats';
+import { TimestampDistance } from '../ui/TimestampDistance';
+import { subchatIndexStore } from '../../lib/stores/subchats';
 import { Spinner } from '@ui/Spinner';
-import { useAreFilesSaving } from '~/lib/stores/fileUpdateCounter';
+import { useAreFilesSaving } from '../../lib/stores/fileUpdateCounter';
 
 interface SubchatBarProps {
   subchats?: { subchatIndex: number; updatedAt: number; description?: string }[];

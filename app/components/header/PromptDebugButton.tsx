@@ -1,25 +1,41 @@
 import { TextAlignLeftIcon } from '@radix-ui/react-icons';
 import { Button } from '@ui/Button';
-import { useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import { initialIdStore } from '~/lib/stores/chatId';
-import { lazy, Suspense, useState } from 'react';
+import { initialIdStore } from '../../lib/stores/chatId';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useStore } from '@nanostores/react';
-import { useIsAdmin } from '~/lib/hooks/useDebugPrompt';
+import { useIsAdmin } from '../../lib/hooks/useDebugPrompt';
+import { useAuth } from '@clerk/nextjs';
 
-// Import eagerly in dev to avoid a reload, lazily in prod for bundle size.
-const DebugAllPromptsForChat = import.meta.env.DEV
+// ✅ Replaced: import.meta.env.DEV → process.env.NODE_ENV
+const DebugAllPromptsForChat = process.env.NODE_ENV === 'development'
   ? (await import('../../components/DebugPromptView')).default
   : lazy(() => import('../../components/DebugPromptView'));
 
 export function PromptDebugButton() {
-  // Note: isAdmin won't change to true unless the user vists /admin/prompt-debug.
-  // That lasts one week then expires.
-  const isAdmin = useQuery(api.admin.isCurrentUserAdmin);
+  // ✅ Replaced: useQuery(api.admin.isCurrentUserAdmin) → fetch
+  const { getToken } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [showDebugView, setShowDebugView] = useState(false);
   const chatInitialId = useStore(initialIdStore);
-
   const [isActivelyCheckingForAdmin, setIsActivelyCheckingForAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/admin/is-admin', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin ?? false);
+        }
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    void checkAdmin();
+  }, [getToken]);
 
   (window as any).chefAssertAdmin = () => {
     setIsActivelyCheckingForAdmin(true);

@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react';
-import { IconButton } from '~/components/ui/IconButton';
-import type { PreviewInfo } from '~/lib/stores/previews';
+import { IconButton } from '../ui/IconButton';
+import type { PreviewInfo } from '../../lib/stores/previews';
 import { Link2Icon } from '@radix-ui/react-icons';
 
 interface PortDropdownProps {

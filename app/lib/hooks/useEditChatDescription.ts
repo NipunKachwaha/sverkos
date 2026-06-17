@@ -1,11 +1,11 @@
-import { api } from '@convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import { useStore } from '@nanostores/react';
 import { useConvex } from 'convex/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { description as descriptionStore } from '~/lib/stores/description';
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
-import { chatIdStore } from '~/lib/stores/chatId';
+import { description as descriptionStore } from '../stores/description';
+import { useConvexSessionIdOrNullOrLoading } from '../stores/sessionId';
+import { chatIdStore } from '../stores/chatId';
 interface EditChatDescriptionOptions {
   initialDescription?: string;
   customChatId?: string;

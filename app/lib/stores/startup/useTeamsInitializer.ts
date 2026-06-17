@@ -1,28 +1,33 @@
-import { useEffect } from 'react';
-import { convexTeamsStore, type ConvexTeam } from '~/lib/stores/convexTeams';
-import { getConvexAuthToken, waitForConvexSessionId } from '~/lib/stores/sessionId';
-import { getStoredTeamSlug, setSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { toast } from 'sonner';
-import type { ConvexReactClient } from 'convex/react';
-import { useConvex } from 'convex/react';
-import { VITE_PROVISION_HOST } from '~/lib/convexProvisionHost';
+"use client";
 
+import { useEffect } from 'react';
+import { convexTeamsStore, type ConvexTeam } from '../convexTeams';
+import { getConvexAuthToken, waitForConvexSessionId } from '../sessionId';
+import { getStoredTeamSlug, setSelectedTeamSlug } from '../convexTeams';
+import { toast } from 'sonner';
+import { useAuth } from '@clerk/nextjs';
+import { APP_URL } from '../../provisionHost';
+
+// ✅ Replaced: useConvex() → Clerk useAuth()
 export function useTeamsInitializer() {
-  const convex = useConvex();
+  const { getToken } = useAuth();
   useEffect(() => {
-    void fetchTeams(convex);
-  }, [convex]);
+    void fetchTeams(getToken);
+  }, [getToken]);
 }
 
-async function fetchTeams(convex: ConvexReactClient) {
+// ✅ Replaced: ConvexReactClient param → Clerk getToken function
+async function fetchTeams(getToken: () => Promise<string | null>) {
   let teams: ConvexTeam[];
   await waitForConvexSessionId('fetchTeams');
   try {
-    const token = getConvexAuthToken(convex);
+    // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken()
+    const token = await getToken();
     if (!token) {
       throw new Error('Missing auth token');
     }
-    const response = await fetch(`${VITE_PROVISION_HOST}/api/dashboard/teams`, {
+    // ✅ Replaced: VITE_PROVISION_HOST → APP_URL
+    const response = await fetch(`${APP_URL}/api/dashboard/teams`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

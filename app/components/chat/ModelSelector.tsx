@@ -1,14 +1,16 @@
-import { Combobox } from '@ui/Combobox';
+'use client';
+
+import { Combobox } from '../ui/Combobox';
 import { MagicWandIcon } from '@radix-ui/react-icons';
-import type { ModelSelection } from '~/utils/constants';
+import type { ModelSelection } from '../../utils/constants';
 import React from 'react';
-import { Tooltip } from '@ui/Tooltip';
+import { Tooltip } from '../ui/Tooltip';
 import { HandThumbUpIcon, KeyIcon } from '@heroicons/react/24/outline';
 import { useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import type { Doc } from '@convex/_generated/dataModel';
-import { captureMessage } from '@sentry/remix';
-import { useLaunchDarkly } from '~/lib/hooks/useLaunchDarkly';
+import { api } from '@/convex/_generated/api';
+import type { Doc } from '@/convex/_generated/dataModel';
+import { captureMessage } from '@sentry/nextjs';
+import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
 
 export type ModelProvider = 'openai' | 'google' | 'xai' | 'anthropic' | 'auto';
 

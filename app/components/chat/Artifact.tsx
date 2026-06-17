@@ -4,16 +4,17 @@ import { computed } from 'nanostores';
 import { memo, useEffect, useRef, useState } from 'react';
 import { createHighlighter, type BundledLanguage, type BundledTheme, type HighlighterGeneric } from 'shiki';
 import { FileIcon, CaretUpIcon, CaretDownIcon, CircleIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
-import type { ActionState } from '~/lib/runtime/action-runner';
-import { workbenchStore } from '~/lib/stores/workbench.client';
-import { type PartId } from '~/lib/stores/artifacts';
-import { classNames } from '~/utils/classNames';
-import { cubicEasingFn } from '~/utils/easings';
-import { summarize } from '~/utils/summarize';
-import { captureException } from '@sentry/remix';
-import type { RelativePath } from 'chef-agent/utils/workDir';
-import { getAbsolutePath } from 'chef-agent/utils/workDir';
+import type { ActionState } from '../../lib/runtime/action-runner';
+import { workbenchStore } from '../../lib/stores/workbench.client';
+import { type PartId } from '../../lib/stores/artifacts';
+import { classNames } from '../../utils/classNames';
+import { cubicEasingFn } from '../../utils/easings';
+import { summarize } from '../../utils/summarize';
+import { captureException } from '@sentry/nextjs'; // <-- Fixed import
+import type { RelativePath } from '../../../lib/agent/utils/workDir';
+import { getAbsolutePath } from '../../../lib/agent/utils/workDir';
 import { Spinner } from '@ui/Spinner';
+
 const highlighterOptions = {
   langs: ['shell'],
   themes: ['light-plus', 'dark-plus'],

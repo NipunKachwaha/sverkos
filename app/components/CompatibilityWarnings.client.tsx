@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { chooseExperience, type Experience } from '../utils/experienceChooser';
-import { Button } from '@ui/Button';
+import { IconButton as Button } from './ui/IconButton';
 
 export function CompatibilityWarnings({ setEnabled }: { setEnabled: (enabled: boolean) => void }) {
   const searchParams = new URLSearchParams(window.location.search);

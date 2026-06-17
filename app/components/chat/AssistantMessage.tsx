@@ -2,12 +2,12 @@ import { memo, useMemo } from 'react';
 import { Markdown } from './Markdown';
 import type { Message } from 'ai';
 import { ToolCall } from './ToolCall';
-import { makePartId, type PartId } from 'chef-agent/partId.js';
+import { makePartId, type PartId } from '../../../lib/agent/partId';
 import { ExclamationTriangleIcon, DotFilledIcon } from '@radix-ui/react-icons';
-import { parseAnnotations, type ProviderType, type Usage, type UsageAnnotation } from '~/lib/common/annotations';
-import { useLaunchDarkly } from '~/lib/hooks/useLaunchDarkly';
-import { calculateChefTokens, usageFromGeneration, type ChefTokenBreakdown } from '~/lib/common/usage';
-import { captureMessage } from '@sentry/remix';
+import { parseAnnotations, type ProviderType, type Usage, type UsageAnnotation } from '../../lib/common/annotations';
+import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
+import { calculateChefTokens, usageFromGeneration, type ChefTokenBreakdown } from '../../lib/common/usage';
+import { captureMessage } from '@sentry/nextjs';
 
 interface AssistantMessageProps {
   message: Message;

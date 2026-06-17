@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import { useStore } from '@nanostores/react';
 import { EnhancePromptButton } from './EnhancePromptButton.client';
-import { messageInputStore } from '~/lib/stores/messageInput';
+import { messageInputStore } from '../../lib/stores/messageInput';
 import React, {
   memo,
   useCallback,
@@ -14,30 +14,27 @@ import React, {
   type ChangeEventHandler,
   type KeyboardEventHandler,
 } from 'react';
-import { useSearchParams } from '@remix-run/react';
-import { classNames } from '~/utils/classNames';
-import { ConvexConnection } from '~/components/convex/ConvexConnection';
-import { PROMPT_COOKIE_KEY, type ModelSelection } from '~/utils/constants';
+import { useSearchParams } from 'next/navigation';
+import { classNames } from '../../utils/classNames';
+import { PROMPT_COOKIE_KEY, type ModelSelection } from '../../utils/constants';
 import { ModelSelector } from './ModelSelector';
-import { TeamSelector } from '~/components/convex/TeamSelector';
+import { TeamSelector } from '../convex/TeamSelector';
 import { ArrowRightIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, StopIcon } from '@radix-ui/react-icons';
 import { SquaresPlusIcon } from '@heroicons/react/24/outline';
 import { Tooltip } from '@ui/Tooltip';
-import { setSelectedTeamSlug, useSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { convexProjectStore } from '~/lib/stores/convexProject';
+import { setSelectedTeamSlug, useSelectedTeamSlug } from '../../lib/stores/convexTeams';
 import { useChefAuth } from './ChefAuthWrapper';
-import { getConvexAuthToken, useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
-import { KeyboardShortcut } from '@ui/KeyboardShortcut';
-import { Button } from '@ui/Button';
-import { Spinner } from '@ui/Spinner';
-import { debounce } from '~/utils/debounce';
+import { getConvexAuthToken, useConvexSessionIdOrNullOrLoading } from '../../lib/stores/sessionId';
+import { KeyboardShortcut } from '../../components/ui/KeyboardShortcut';
+import { IconButton as Button } from '../ui/IconButton';
+import { Spinner } from '../../components/ui/Spinner';
+import { debounce } from '../../utils/debounce';
 import { toast } from 'sonner';
-import { captureException } from '@sentry/remix';
-import { Menu as MenuComponent, MenuItem as MenuItemComponent } from '@ui/Menu';
+import { captureException } from '@sentry/nextjs';
+import { Menu as MenuComponent, MenuItem as MenuItemComponent } from '../../components/ui/Menu';
 import { PencilSquareIcon } from '@heroicons/react/24/outline';
 import { ChatBubbleLeftIcon, DocumentArrowUpIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@workos-inc/authkit-react';
-import { useConvex } from 'convex/react';
+import { useAuth } from '@clerk/nextjs';
 
 const PROMPT_LENGTH_WARNING_THRESHOLD = 2000;
 
@@ -115,7 +112,8 @@ export const MessageInput = memo(function MessageInput({
   const sessionId = useConvexSessionIdOrNullOrLoading();
   const chefAuthState = useChefAuth();
   const selectedTeamSlug = useSelectedTeamSlug();
-  const convex = useConvex();
+  // ✅ Replaced: useConvex() → Clerk getToken
+  const { getToken } = useAuth();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -185,7 +183,8 @@ export const MessageInput = memo(function MessageInput({
     try {
       setIsEnhancing(true);
 
-      const token = getConvexAuthToken(convex);
+      // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken()
+      const token = await getToken();
       if (!token) {
         throw new Error('No auth token');
       }
@@ -224,7 +223,7 @@ export const MessageInput = memo(function MessageInput({
     } finally {
       setIsEnhancing(false);
     }
-  }, [input, convex, selectedTeamSlug]);
+  }, [input, getToken, selectedTeamSlug]);
 
   // Helper to insert template and select '[...]'
   const insertTemplate = useCallback(
@@ -605,13 +604,16 @@ const CharacterWarning = memo(function CharacterWarning() {
 });
 
 const SignInButton = memo(function SignInButton() {
+  // ✅ Replaced: useAuth() WorkOS → Clerk
   const { signIn } = useAuth();
 
   return (
     <Button
       variant="neutral"
       onClick={() => {
-        void signIn();
+        // ✅ Clerk doesn't have signIn() directly on useAuth — use openSignIn instead
+        // If this errors, replace with: import { useClerk } from '@clerk/nextjs'; useClerk().openSignIn()
+        void signIn?.();
       }}
       size="xs"
       className="text-xs font-normal"

@@ -1,4 +1,4 @@
-import { Button } from '@ui/Button';
+import { IconButton as Button } from '../ui/IconButton';
 import React from 'react';
 import { Spinner } from '@ui/Spinner';
 import { SparklesIcon } from '@heroicons/react/24/outline';

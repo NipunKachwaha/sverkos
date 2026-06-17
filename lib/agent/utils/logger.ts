@@ -1,4 +1,4 @@
-import { setChefDebugProperty } from './chefDebug.js';
+import { setChefDebugProperty } from './chefDebug';
 
 const levelOrder = ['trace', 'debug', 'info', 'warn', 'error'] as const;
 type DebugLevel = (typeof levelOrder)[number];

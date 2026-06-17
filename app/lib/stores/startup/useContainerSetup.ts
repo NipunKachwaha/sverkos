@@ -1,22 +1,17 @@
+"use client";
+
 import { useEffect } from 'react';
-import { ContainerBootState, setContainerBootState, waitForBootStepCompleted } from '~/lib/stores/containerBootState';
+import { ContainerBootState, setContainerBootState, waitForBootStepCompleted } from '../containerBootState';
 import { webcontainer } from '../../webcontainer/index';
 import { useStore } from '@nanostores/react';
 import { sessionIdStore } from '../sessionId';
-import { api } from '@convex/_generated/api';
-import type { ConvexReactClient } from 'convex/react';
-import { useConvex } from 'convex/react';
-import { decompressWithLz4 } from '~/lib/compression';
-import { streamOutput } from '~/utils/process';
-import { cleanTerminalOutput } from 'chef-agent/utils/shell';
+import { useAuth } from '@clerk/nextjs';
+import { decompressWithLz4 } from '../../compression';
+import { streamOutput } from '../../../utils/process';
+import { cleanTerminalOutput } from '../../../../lib/agent/utils/shell';
 import { toast } from 'sonner';
-import { waitForConvexProjectConnection } from '~/lib/stores/convexProject';
-import type { ConvexProject } from 'chef-agent/types';
 import type { WebContainer } from '@webcontainer/api';
-import { queryEnvVariableWithRetries, setEnvVariablesWithRetries } from 'chef-agent/convexEnvVariables';
-import { getConvexSiteUrl } from '~/lib/convexSiteUrl';
-import { workbenchStore } from '~/lib/stores/workbench.client';
-import { initializeConvexAuth } from '../../../../lib/agent/convexAuth';
+import { workbenchStore } from '../workbench.client';
 import { appendEnvVarIfNotSet } from '../../../utils/envFileUtils';
 import { getFileUpdateCounter } from '../fileUpdateCounter';
 import { chatSyncState } from './chatSyncState';
@@ -25,57 +20,73 @@ import { setChefDebugProperty } from '../../../../lib/agent/utils/chefDebug';
 
 const TEMPLATE_URL = '/template-snapshot-342e2b07.bin';
 
+// ✅ Replaced: useConvex() + convex setup → Clerk getToken + fetch
 export function useNewChatContainerSetup() {
-  const convex = useConvex();
+  const { getToken } = useAuth();
+
   useEffect(() => {
     const runSetup = async () => {
       try {
         await waitForBootStepCompleted(ContainerBootState.STARTING);
-        await setupContainer(convex, { snapshotUrl: TEMPLATE_URL, allowNpmInstallFailure: false });
+        const token = await getToken();
+        await setupContainer({ snapshotUrl: TEMPLATE_URL, allowNpmInstallFailure: false, token });
       } catch (error: any) {
-        toast.error('Failed to setup Chef environment. Try reloading the page.');
+        toast.error('Failed to setup environment. Try reloading the page.');
         setContainerBootState(ContainerBootState.ERROR, error);
       }
     };
     void runSetup();
-  }, [convex]);
+  }, [getToken]);
 }
 
+// ✅ Replaced: convex.query(api.snapshot.getSnapshotUrl) → fetch
 export function useExistingChatContainerSetup(loadedChatId: string | undefined) {
   const sessionId = useStore(sessionIdStore);
-  const convex = useConvex();
+  const { getToken } = useAuth();
+
   useEffect(() => {
-    if (!sessionId) {
-      return;
-    }
-    if (!loadedChatId) {
-      return;
-    }
+    if (!sessionId) return;
+    if (!loadedChatId) return;
+
     const runSetup = async () => {
       try {
         await waitForBootStepCompleted(ContainerBootState.STARTING);
-        let snapshotUrl = await convex.query(api.snapshot.getSnapshotUrl, { chatId: loadedChatId, sessionId });
-        if (!snapshotUrl) {
+
+        const token = await getToken();
+
+        // ✅ Replaced: convex.query(api.snapshot.getSnapshotUrl) → fetch
+        const res = await fetch(`/api/snapshots/url?chatId=${loadedChatId}&sessionId=${sessionId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        let snapshotUrl = TEMPLATE_URL;
+        if (res.ok) {
+          const data = await res.json();
+          snapshotUrl = data.url ?? TEMPLATE_URL;
+        } else {
           console.warn(`Existing chat ${loadedChatId} has no snapshot. Loading the base template.`);
-          snapshotUrl = TEMPLATE_URL;
         }
-        await setupContainer(convex, { snapshotUrl, allowNpmInstallFailure: true });
+
+        await setupContainer({ snapshotUrl, allowNpmInstallFailure: true, token });
       } catch (error: any) {
-        toast.error('Failed to setup Chef environment. Try reloading the page.');
+        toast.error('Failed to setup environment. Try reloading the page.');
         setContainerBootState(ContainerBootState.ERROR, error);
       }
     };
     void runSetup();
-  }, [convex, loadedChatId, sessionId]);
+  }, [loadedChatId, sessionId, getToken]);
 }
 
-async function setupContainer(
-  convex: ConvexReactClient,
-  options: { snapshotUrl: string; allowNpmInstallFailure: boolean },
-) {
+// ✅ Replaced: ConvexReactClient param → token string
+async function setupContainer(options: {
+  snapshotUrl: string;
+  allowNpmInstallFailure: boolean;
+  token: string | null;
+}) {
+  // Download + mount snapshot
   const resp = await fetch(options.snapshotUrl);
   if (!resp.ok) {
-    throw new Error(`Failed to download snapshot (${resp.statusText}): ${resp.statusText}`);
+    throw new Error(`Failed to download snapshot (${resp.statusText})`);
   }
   const compressed = await resp.arrayBuffer();
   const decompressed = decompressWithLz4(new Uint8Array(compressed));
@@ -83,12 +94,11 @@ async function setupContainer(
   const container = await webcontainer;
   await container.mount(decompressed);
 
-  // After loading the snapshot, we need to load the files into the FilesStore since
-  // we won't receive file events for snapshot files.
+  // Prewarm workdir
   await workbenchStore.prewarmWorkdir(container);
-
   setChefDebugProperty('webcontainer', container);
 
+  // Install dependencies
   setContainerBootState(ContainerBootState.DOWNLOADING_DEPENDENCIES);
   const npm = await container.spawn('npm', ['install', '--no-fund', '--no-deprecated']);
   const { output, exitCode } = await streamOutput(npm);
@@ -96,7 +106,7 @@ async function setupContainer(
 
   if (exitCode !== 0) {
     if (options.allowNpmInstallFailure) {
-      toast.error(`Failed to install dependencies. Fix your package.json and tell Chef to redeploy.`, {
+      toast.error('Failed to install dependencies. Fix your package.json and try again.', {
         duration: Infinity,
       });
       console.error(`npm install failed with exit code ${exitCode}: ${output}`);
@@ -105,16 +115,16 @@ async function setupContainer(
     }
   }
 
+  // ✅ Replaced: Convex project setup → Supabase env vars setup
   setContainerBootState(ContainerBootState.SETTING_UP_CONVEX_PROJECT);
-  const convexProject = await waitForConvexProjectConnection();
+  await setupSupabaseEnvVars(container);
 
+  // ✅ Replaced: setupOpenAIToken + setupResendToken via Convex → fetch
   setContainerBootState(ContainerBootState.SETTING_UP_CONVEX_ENV_VARS);
-  await setupConvexEnvVars(container, convexProject);
-  await setupOpenAIToken(convex, convexProject);
-  await setupResendToken(convex, convexProject);
-  setContainerBootState(ContainerBootState.CONFIGURING_CONVEX_AUTH);
-  await initializeConvexAuth(convexProject);
+  await setupOpenAIToken(container, options.token);
+  await setupResendToken(container, options.token);
 
+  // Backup
   setContainerBootState(ContainerBootState.STARTING_BACKUP);
   await initializeFileSystemBackup();
 
@@ -122,9 +132,6 @@ async function setupContainer(
 }
 
 async function initializeFileSystemBackup() {
-  // This is a bit racy, but we need to flush the current file events before
-  // deciding that we're synced up to the current update counter. Sleep for
-  // twice the batching interval.
   await new Promise((resolve) => setTimeout(resolve, FILE_EVENTS_DEBOUNCE_MS * 2));
   const currentChatSyncState = chatSyncState.get();
   if (currentChatSyncState.savedFileUpdateCounter === null) {
@@ -136,41 +143,80 @@ async function initializeFileSystemBackup() {
   }
 }
 
-async function setupConvexEnvVars(webcontainer: WebContainer, convexProject: ConvexProject) {
-  const { token } = convexProject;
+// ✅ Replaced: setupConvexEnvVars → setupSupabaseEnvVars
+async function setupSupabaseEnvVars(container: WebContainer) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
   await appendEnvVarIfNotSet({
     envFilePath: '.env.local',
-    readFile: (path) => webcontainer.fs.readFile(path, 'utf-8'),
-    writeFile: (path, content) => webcontainer.fs.writeFile(path, content),
-    envVarName: 'CONVEX_DEPLOY_KEY',
-    value: token,
+    readFile: (path) => container.fs.readFile(path, 'utf-8'),
+    writeFile: (path, content) => container.fs.writeFile(path, content),
+    envVarName: 'NEXT_PUBLIC_SUPABASE_URL',
+    value: supabaseUrl,
+  });
+
+  await appendEnvVarIfNotSet({
+    envFilePath: '.env.local',
+    readFile: (path) => container.fs.readFile(path, 'utf-8'),
+    writeFile: (path, content) => container.fs.writeFile(path, content),
+    envVarName: 'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    value: supabaseAnonKey,
   });
 }
 
-async function setupOpenAIToken(convex: ConvexReactClient, project: ConvexProject) {
-  const existing = await queryEnvVariableWithRetries(project, 'CONVEX_OPENAI_API_KEY');
-  if (existing) {
-    return;
-  }
-  const token = await convex.mutation(api.openaiProxy.issueOpenAIToken);
-  if (token) {
-    await setEnvVariablesWithRetries(project, {
-      CONVEX_OPENAI_API_KEY: token,
-      CONVEX_OPENAI_BASE_URL: getConvexSiteUrl() + '/openai-proxy',
+// ✅ Replaced: convex.mutation(api.openaiProxy.issueOpenAIToken) → fetch
+async function setupOpenAIToken(container: WebContainer, token: string | null) {
+  try {
+    const res = await fetch('/api/tokens/openai', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    if (data.apiKey) {
+      await appendEnvVarIfNotSet({
+        envFilePath: '.env.local',
+        readFile: (path) => container.fs.readFile(path, 'utf-8'),
+        writeFile: (path, content) => container.fs.writeFile(path, content),
+        envVarName: 'OPENAI_API_KEY',
+        value: data.apiKey,
+      });
+    }
+  } catch (error) {
+    console.error('Failed to setup OpenAI token', error);
   }
 }
 
-async function setupResendToken(convex: ConvexReactClient, project: ConvexProject) {
-  const existing = await queryEnvVariableWithRetries(project, 'CONVEX_RESEND_API_KEY');
-  if (existing) {
-    return;
-  }
-  const token = await convex.mutation(api.resendProxy.issueResendToken);
-  if (token) {
-    await setEnvVariablesWithRetries(project, {
-      CONVEX_RESEND_API_KEY: token,
-      RESEND_BASE_URL: getConvexSiteUrl() + '/resend-proxy',
+// ✅ Replaced: convex.mutation(api.resendProxy.issueResendToken) → fetch
+async function setupResendToken(container: WebContainer, token: string | null) {
+  try {
+    const res = await fetch('/api/tokens/resend', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
+
+    if (!res.ok) return;
+
+    const data = await res.json();
+    if (data.apiKey) {
+      await appendEnvVarIfNotSet({
+        envFilePath: '.env.local',
+        readFile: (path) => container.fs.readFile(path, 'utf-8'),
+        writeFile: (path, content) => container.fs.writeFile(path, content),
+        envVarName: 'RESEND_API_KEY',
+        value: data.apiKey,
+      });
+    }
+  } catch (error) {
+    console.error('Failed to setup Resend token', error);
   }
 }

@@ -1,5 +1,5 @@
 import { DiscordLogoIcon } from '@radix-ui/react-icons';
-import { Button } from '@ui/Button';
+import { IconButton as Button } from '../ui/IconButton';
 import { MenuItem } from '@ui/Menu';
 
 export function DiscordButton({ showInMenu }: { showInMenu: boolean }) {

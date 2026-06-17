@@ -7,23 +7,22 @@ import {
   type OnChangeCallback as OnEditorChange,
   type OnScrollCallback as OnEditorScroll,
   type OnWheelCallback as OnEditorWheel,
-} from '~/components/editor/codemirror/CodeMirrorEditor';
-import { IconButton } from '~/components/ui/IconButton';
-import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
-import { Slider, type SliderOptions } from '~/components/ui/Slider';
-import { workbenchStore, type WorkbenchViewType } from '~/lib/stores/workbench.client';
-import { classNames } from '~/utils/classNames';
-import { cubicEasingFn } from '~/utils/easings';
-import { renderLogger } from 'chef-agent/utils/logger';
+} from '../../components/editor/codemirror/CodeMirrorEditor';
+import { IconButton } from '../../components/ui/IconButton';
+import { PanelHeaderButton } from '../../components/ui/PanelHeaderButton';
+import { Slider, type SliderOptions } from '../../components/ui/Slider';
+import { workbenchStore, type WorkbenchViewType } from '../../lib/stores/workbench.client';
+import { classNames } from '../../utils/classNames';
+import { cubicEasingFn } from '../../utils/easings';
+import { renderLogger } from '../../../lib/agent/utils/logger';
 import { EditorPanel } from './EditorPanel';
 import { Preview } from './Preview';
-import useViewport from '~/lib/hooks/useViewport';
+import useViewport from '../../lib/hooks/useViewport';
 import { Dashboard } from './Dashboard';
 import { Allotment } from 'allotment';
-import { convexProjectStore } from '~/lib/stores/convexProject';
-import { BackupStatusIndicator } from '~/components/BackupStatusIndicator';
-import type { TerminalInitializationOptions } from '~/types/terminal';
-import { getAbsolutePath } from 'chef-agent/utils/workDir';
+import { BackupStatusIndicator } from '../../components/BackupStatusIndicator';
+import type { TerminalInitializationOptions } from '../../types/terminal';
+import { getAbsolutePath } from '../../../lib/agent/utils/workDir';
 import { PlusIcon, Cross2Icon } from '@radix-ui/react-icons';
 import { CommandLineIcon } from '@heroicons/react/24/outline';
 

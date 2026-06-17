@@ -1,3 +1,5 @@
+"use client";
+
 import { Chat } from './chat/Chat';
 import { ChefAuthProvider } from './chat/ChefAuthWrapper';
 import { useRef } from 'react';

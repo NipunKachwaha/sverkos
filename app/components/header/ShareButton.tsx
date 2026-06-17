@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import * as Popover from '@radix-ui/react-popover';
 import { useMutation, useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 import { useConvexSessionId } from '../../lib/stores/sessionId';
 import { useChatId } from '../../lib/stores/chatId';
 import {
@@ -23,7 +23,7 @@ import type { ChangeEvent } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { ThumbnailChooser, uploadThumbnail } from '../workbench/ThumbnailChooser';
 import { workbenchStore } from '../../lib/stores/workbench.client';
-import { captureException } from '@sentry/remix';
+import { captureException } from '@sentry/nextjs';
 import { useReferralCode, useReferralStats } from '../../lib/hooks/useReferralCode';
 import { selectedTeamSlugStore } from '../../lib/stores/convexTeams';
 import { useStore } from '@nanostores/react';

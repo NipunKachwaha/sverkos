@@ -1,16 +1,18 @@
+"use client";
+
 import { useState, useEffect } from 'react';
-import { useConvex } from 'convex/react';
-import { waitForConvexSessionId } from '~/lib/stores/sessionId';
-import { api } from '@convex/_generated/api';
-import type { SerializedMessage } from '@convex/messages';
+import { useAuth } from '@clerk/nextjs';
+import { waitForConvexSessionId } from '../sessionId';
+import { api } from '../../../../convex/_generated/api';
+import type { SerializedMessage } from '../../../../convex/messages';
 import type { Message } from '@ai-sdk/react';
-import { setKnownUrlId } from '~/lib/stores/chatId';
-import { setKnownInitialId } from '~/lib/stores/chatId';
-import { description } from '~/lib/stores/description';
+import { setKnownUrlId } from '../chatId';
+import { setKnownInitialId } from '../chatId';
+import { description } from '../description';
 import { toast } from 'sonner';
 import * as lz4 from 'lz4-wasm';
-import { getConvexSiteUrl } from '~/lib/convexSiteUrl';
-import { subchatIndexStore } from '~/lib/stores/subchats';
+import { getConvexSiteUrl } from '../../convexSiteUrl';
+import { subchatIndexStore } from '../subchats';
 import { useStore } from '@nanostores/react';
 
 export interface InitialMessages {
@@ -24,7 +26,7 @@ export function useInitialMessages(chatId: string | undefined):
   | InitialMessages
   | null // not found
   | undefined {
-  const convex = useConvex();
+  const { getToken, userId } = useAuth();
   const [initialMessages, setInitialMessages] = useState<InitialMessages | null | undefined>();
   const subchatIndex = useStore(subchatIndexStore);
 

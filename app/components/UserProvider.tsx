@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect } from 'react';
-import { setExtra, setUser } from '@sentry/remix';
-import { useConvex, useQuery } from 'convex/react';
-import { useConvexSessionIdOrNullOrLoading, getConvexAuthToken } from '../lib/stores/sessionId';
+import { setExtra, setUser } from '@sentry/nextjs';
+import { useAuth, useUser } from '@clerk/nextjs';
+import { useConvexSessionIdOrNullOrLoading, getConvexAuthToken, setAuthToken } from '../lib/stores/sessionId';
 import { useChatId } from '../lib/stores/chatId';
 import { setProfile } from '../lib/stores/profile';
 import { getConvexProfile } from '../lib/convexProfile';
 import { useLDClient, withLDProvider, basicLogger } from 'launchdarkly-react-client-sdk';
-import { api } from '@convex/_generated/api';
-import { useAuth } from '@workos-inc/authkit-react';
+import { api } from '@/convex/_generated/api';
 
 export const UserProvider = withLDProvider<any>({
-  clientSideID: import.meta.env.VITE_LD_CLIENT_SIDE_ID,
+  // ✅ Replaced: import.meta.env.VITE_LD_CLIENT_SIDE_ID → process.env
+  clientSideID: process.env.NEXT_PUBLIC_LD_CLIENT_SIDE_ID ?? '',
   options: {
     logger: basicLogger({ level: 'error' }),
   },
@@ -20,11 +20,14 @@ export const UserProvider = withLDProvider<any>({
 
 function UserProviderInner({ children }: { children: React.ReactNode }) {
   const launchdarkly = useLDClient();
-  const { user } = useAuth();
-  const convexMemberId = useQuery(api.sessions.convexMemberId);
+
+  // ✅ Replaced: useAuth() WorkOS → Clerk
+  // ✅ Replaced: useConvex() + useQuery() → removed
+  const { userId, getToken } = useAuth();
+  const { user } = useUser();
+
   const sessionId = useConvexSessionIdOrNullOrLoading();
   const chatId = useChatId();
-  const convex = useConvex();
 
   useEffect(() => {
     if (sessionId) {
@@ -36,44 +39,54 @@ function UserProviderInner({ children }: { children: React.ReactNode }) {
     setExtra('chatId', chatId);
   }, [chatId]);
 
-  const tokenValue = (convex as any)?.sync?.state?.auth?.value;
+  // ✅ Cache Clerk token for sync use via getConvexAuthToken()
+  useEffect(() => {
+    if (!userId) return;
+    getToken().then((token) => setAuthToken(token));
+  }, [userId, getToken]);
+
+  // ✅ Removed: tokenValue — Convex internal state tha, ab zarurat nahi
 
   useEffect(() => {
     async function updateProfile() {
-      if (user) {
+      if (user && userId) {
+        // ✅ Replaced: convexMemberId → userId from Clerk
         launchdarkly?.identify({
-          key: convexMemberId ?? '',
-          email: user.email ?? '',
+          key: userId,
+          email: user.primaryEmailAddress?.emailAddress ?? '',
         });
         setUser({
-          id: convexMemberId ?? '',
+          id: userId,
           username: user.firstName ? (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) : '',
-          email: user.email ?? undefined,
+          email: user.primaryEmailAddress?.emailAddress ?? undefined,
         });
 
-        // Get additional profile info from Convex
         try {
-          const token = getConvexAuthToken(convex);
+          // ✅ Replaced: getConvexAuthToken(convex) → getToken() from Clerk
+          const token = await getToken();
           if (token) {
-            void convex.action(api.sessions.updateCachedProfile, { convexAuthToken: token });
+            setAuthToken(token);
+            // ✅ Removed: convex.action(api.sessions.updateCachedProfile) — Convex specific
+            // ✅ Kept: getConvexProfile — file exist karti hai
             const convexProfile = await getConvexProfile(token);
             setProfile({
               username:
                 convexProfile.name ??
                 (user.firstName ? (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) : ''),
-              email: convexProfile.email || user.email || '',
-              avatar: user.profilePictureUrl || '',
-              id: convexProfile.id || user.id || '',
+              email: convexProfile.email || user.primaryEmailAddress?.emailAddress || '',
+              // ✅ Replaced: user.profilePictureUrl (WorkOS) → user.imageUrl (Clerk)
+              avatar: user.imageUrl || '',
+              id: convexProfile.id || userId,
             });
           }
         } catch (error) {
-          console.error('Failed to fetch Convex profile:', error);
-          // Fallback to WorkOS profile if Convex profile fetch fails
+          console.error('Failed to fetch profile:', error);
+          // ✅ Replaced: WorkOS fallback → Clerk fallback
           setProfile({
             username: user.firstName ? (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) : '',
-            email: user.email ?? '',
-            avatar: user.profilePictureUrl ?? '',
-            id: user.id ?? '',
+            email: user.primaryEmailAddress?.emailAddress ?? '',
+            avatar: user.imageUrl ?? '',
+            id: userId,
           });
         }
       } else {
@@ -83,8 +96,7 @@ function UserProviderInner({ children }: { children: React.ReactNode }) {
       }
     }
     void updateProfile();
-    // Including tokenValue is important here even though it's not a direct dependency
-  }, [launchdarkly, user, convex, tokenValue, convexMemberId]);
+  }, [launchdarkly, user, userId, getToken]);
 
   return children;
 }

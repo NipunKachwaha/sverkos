@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/remix';
+import * as Sentry from '@sentry/nextjs';
 import { ChatBubbleIcon } from '@radix-ui/react-icons';
 import { MenuItem } from '@ui/Menu';
 import { Button } from '@ui/Button';

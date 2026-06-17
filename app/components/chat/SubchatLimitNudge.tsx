@@ -1,7 +1,7 @@
-import { Button } from '@ui/Button';
+import { IconButton as Button } from '../ui/IconButton';
 import { PlusIcon } from '@radix-ui/react-icons';
-import type { Id } from '@convex/_generated/dataModel';
-import { useAreFilesSaving } from '~/lib/stores/fileUpdateCounter';
+import type { Id } from '@/convex/_generated/dataModel';
+import { useAreFilesSaving } from '../../lib/stores/fileUpdateCounter';
 
 interface SubchatLimitNudgeProps {
   sessionId: Id<'sessions'> | null;

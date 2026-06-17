@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@ui/cn';
+import { cn } from './Cn';
 import { Tooltip } from '@ui/Tooltip';
 
 export function TimestampDistance({

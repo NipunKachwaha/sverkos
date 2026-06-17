@@ -1,16 +1,18 @@
+'use client';
+
 import { useState } from 'react';
-import { useConvex } from 'convex/react';
-import { Button } from '@ui/Button';
-import { TextInput } from '@ui/TextInput';
+import { useAuth } from '@clerk/nextjs';
+import { IconButton as Button } from '../ui/IconButton';
+import { TextInput } from '../ui/TextInput';
 import { toast } from 'sonner';
 import { EyeNoneIcon, EyeOpenIcon } from '@radix-ui/react-icons';
-import { api } from '@convex/_generated/api';
-import { captureException } from '@sentry/remix';
+import { api } from '@/convex/_generated/api';
+import { captureException } from '@sentry/nextjs';
 import { type ModelProvider, displayModelProviderName } from './ModelSelector';
 import { KeyIcon } from '@heroicons/react/24/outline';
-import type { Doc } from '@convex/_generated/dataModel';
-import { ConfirmationDialog } from '@ui/ConfirmationDialog';
-import { useLaunchDarkly } from '~/lib/hooks/useLaunchDarkly';
+import type { Doc } from '../../../convex/_generated/dataModel';
+import { ConfirmationDialog } from '../ui/ConfirmationDialog';
+import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
 
 export interface MissingApiKeyProps {
   provider: ModelProvider;
@@ -23,15 +25,20 @@ export function MissingApiKey({ provider, requireKey, resetDisableChatMessage }:
   const [isSaving, setIsSaving] = useState(false);
   const [newKeyValue, setNewKeyValue] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const convex = useConvex();
+  // ✅ Replaced: useConvex() → Clerk getToken
+  const { getToken } = useAuth();
   const { useGeminiAuto } = useLaunchDarkly();
 
   const handleSaveKey = async () => {
     try {
       setIsSaving(true);
 
-      // Get the current API key data
-      const apiKey = await convex.query(api.apiKeys.apiKeyForCurrentMember);
+      // ✅ Replaced: convex.query(api.apiKeys.apiKeyForCurrentMember) → fetch
+      const token = await getToken();
+      const apiKeyRes = await fetch(api.apiKeys.apiKeyForCurrentMember, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const apiKey = apiKeyRes.ok ? await apiKeyRes.json() : null;
 
       const apiKeyMutation: Doc<'convexMembers'>['apiKey'] = {
         preference: apiKey?.preference || ('quotaExhausted' as 'always' | 'quotaExhausted'),
@@ -67,8 +74,14 @@ export function MissingApiKey({ provider, requireKey, resetDisableChatMessage }:
         }
       }
 
-      await convex.mutation(api.apiKeys.setApiKeyForCurrentMember, {
-        apiKey: apiKeyMutation,
+      // ✅ Replaced: convex.mutation(api.apiKeys.setApiKeyForCurrentMember) → fetch
+      await fetch(api.apiKeys.apiKeyForCurrentMember, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ apiKey: apiKeyMutation }),
       });
 
       toast.success(`${displayModelProviderName(provider)} API key saved`);
@@ -89,18 +102,29 @@ export function MissingApiKey({ provider, requireKey, resetDisableChatMessage }:
     try {
       setIsSaving(true);
 
-      // Get the current API key data
-      const apiKey = await convex.query(api.apiKeys.apiKeyForCurrentMember);
+      // ✅ Replaced: convex.query(api.apiKeys.apiKeyForCurrentMember) → fetch
+      const token = await getToken();
+      const apiKeyRes = await fetch(api.apiKeys.apiKeyForCurrentMember, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const apiKey = apiKeyRes.ok ? await apiKeyRes.json() : null;
 
-      // Change preference to 'quotaExhausted' but keep all the existing keys
-      await convex.mutation(api.apiKeys.setApiKeyForCurrentMember, {
-        apiKey: {
-          preference: 'quotaExhausted',
-          value: apiKey?.value,
-          openai: apiKey?.openai,
-          xai: apiKey?.xai,
-          google: apiKey?.google,
+      // ✅ Replaced: convex.mutation(api.apiKeys.setApiKeyForCurrentMember) → fetch
+      await fetch(api.apiKeys.apiKeyForCurrentMember, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          apiKey: {
+            preference: 'quotaExhausted',
+            value: apiKey?.value,
+            openai: apiKey?.openai,
+            xai: apiKey?.xai,
+            google: apiKey?.google,
+          },
+        }),
       });
 
       toast.success('Preference updated. Now using Convex tokens.');

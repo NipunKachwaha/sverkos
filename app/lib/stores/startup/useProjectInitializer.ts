@@ -1,36 +1,38 @@
-import { setSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { convexProjectStore } from '~/lib/stores/convexProject';
+"use client";
 
-import { useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
+import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 
+// ✅ Replaced: Convex project credentials → Supabase project info via fetch
 export function useProjectInitializer(chatId: string) {
-  const sessionId = useConvexSessionIdOrNullOrLoading();
-  const projectInfo = useQuery(
-    api.convexProjects.loadConnectedConvexProjectCredentials,
-    sessionId
-      ? {
-          sessionId,
-          chatId,
-        }
-      : 'skip',
-  );
+  const { userId, getToken } = useAuth();
+
   useEffect(() => {
-    if (projectInfo?.kind === 'connected') {
-      convexProjectStore.set({
-        token: projectInfo.adminKey,
-        deploymentName: projectInfo.deploymentName,
-        deploymentUrl: projectInfo.deploymentUrl,
-        projectSlug: projectInfo.projectSlug,
-        teamSlug: projectInfo.teamSlug,
-      });
-      setSelectedTeamSlug(projectInfo.teamSlug);
-    }
-    if (projectInfo?.kind === 'failed') {
-      toast.error(projectInfo.errorMessage);
-    }
-  }, [projectInfo]);
+    if (!userId || !chatId) return;
+
+    const loadProject = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`/api/projects/info?chatId=${chatId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          console.warn('Could not load project info for chat:', chatId);
+          return;
+        }
+
+        const project = await res.json();
+
+        if (project?.kind === 'failed') {
+          toast.error(project.errorMessage);
+        }
+      } catch (error) {
+        console.error('Failed to initialize project', error);
+      }
+    };
+
+    void loadProject();
+  }, [chatId, userId, getToken]);
 }

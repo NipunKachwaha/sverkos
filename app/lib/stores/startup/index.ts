@@ -6,9 +6,9 @@ import { useTeamsInitializer } from './useTeamsInitializer';
 import { useExistingChatContainerSetup, useNewChatContainerSetup } from './useContainerSetup';
 import { useBackupSyncState } from './history';
 import { useState } from 'react';
-import { useConvexSessionIdOrNullOrLoading } from '~/lib/stores/sessionId';
+import { useConvexSessionIdOrNullOrLoading } from '../sessionId';
 import { useQuery } from 'convex/react';
-import { api } from '@convex/_generated/api';
+import { api } from '@/convex/_generated/api';
 
 export function useConvexChatHomepage(chatId: string) {
   useTeamsInitializer();

@@ -14,32 +14,32 @@ import {
   ExternalLinkIcon,
   ExclamationTriangleIcon,
 } from '@radix-ui/react-icons';
-import type { ActionState } from '~/lib/runtime/action-runner';
-import { workbenchStore, type ArtifactState } from '~/lib/stores/workbench.client';
-import { type PartId } from '~/lib/stores/artifacts';
-import { cubicEasingFn } from '~/utils/easings';
-import { classNames } from '~/utils/classNames';
-import type { ConvexToolInvocation } from '~/lib/common/types';
-import { getTerminalTheme } from '~/components/workbench/terminal/theme';
+import type { ActionState } from '../../lib/runtime/action-runner';
+import { workbenchStore, type ArtifactState } from '../../lib/stores/workbench.client';
+import { type PartId } from '../../lib/stores/artifacts';
+import { cubicEasingFn } from '../../utils/easings';
+import { classNames } from '../../utils/classNames';
+import type { ConvexToolInvocation } from '../../lib/common/types';
+import { getTerminalTheme } from '../workbench/terminal/theme';
 import { FitAddon } from '@xterm/addon-fit';
-import { viewParameters } from 'chef-agent/tools/view';
+import { viewParameters } from '../../../lib/agent/tools/view';
 import { getHighlighter } from 'shiki';
-import { themeStore } from '~/lib/stores/theme';
-import { getLanguageFromExtension } from '~/utils/getLanguageFromExtension';
-import { path } from 'chef-agent/utils/path';
-import { editToolParameters } from 'chef-agent/tools/edit';
-import { npmInstallToolParameters } from 'chef-agent/tools/npmInstall';
-import { loggingSafeParse } from 'chef-agent/utils/zodUtil';
-import { deployToolParameters } from 'chef-agent/tools/deploy';
+import { themeStore } from '../../lib/stores/theme';
+import { getLanguageFromExtension } from '../../utils/getLanguageFromExtension';
+import { path } from '../../../lib/agent/utils/path';
+import { editToolParameters } from '../../../lib/agent/tools/edit';
+import { npmInstallToolParameters } from '../../../lib/agent/tools/npmInstall';
+import { loggingSafeParse } from '../../../lib/agent/utils/zodUtil';
+import { deployToolParameters } from '../../../lib/agent/tools/deploy';
 import type { ZodError } from 'zod';
 import { Spinner } from '@ui/Spinner';
 import { FolderIcon } from '@heroicons/react/24/outline';
-import { outputLabels } from '~/lib/runtime/deployToolOutputLabels';
-import { getRelativePath } from 'chef-agent/utils/workDir';
-import { lookupDocsParameters } from 'chef-agent/tools/lookupDocs';
-import { Markdown } from '~/components/chat/Markdown';
-import { addEnvironmentVariablesParameters } from 'chef-agent/tools/addEnvironmentVariables';
-import { openDashboardToPath } from '~/lib/stores/dashboardPath';
+import { outputLabels } from '../../lib/runtime/deployToolOutputLabels';
+import { getRelativePath } from '../../../lib/agent/utils/workDir';
+import { lookupDocsParameters } from '../../../lib/agent/tools/lookupDocs';
+import { Markdown } from './Markdown';
+import { addEnvironmentVariablesParameters } from '../../../lib/agent/tools/addEnvironmentVariables';
+import { openDashboardToPath } from '../../lib/stores/dashboardPath';
 
 export const ToolCall = memo(function ToolCall({ partId, toolCallId }: { partId: PartId; toolCallId: string }) {
   const userToggledAction = useRef(false);

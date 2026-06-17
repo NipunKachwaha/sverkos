@@ -1,9 +1,9 @@
 import { memo, useEffect, useState } from 'react';
 import { bundledLanguages, codeToHtml, isSpecialLang, type BundledLanguage, type SpecialLanguage } from 'shiki';
-import { classNames } from '~/utils/classNames';
-import { createScopedLogger } from 'chef-agent/utils/logger';
+import { classNames } from '../../utils/classNames';
+import { createScopedLogger } from '../../../lib/agent/utils/logger';
 import { CheckIcon, ClipboardIcon } from '@radix-ui/react-icons';
-import { Button } from '@ui/Button';
+import { IconButton as Button } from '../ui/IconButton';
 
 const logger = createScopedLogger('CodeBlock');
 

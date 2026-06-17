@@ -1,19 +1,17 @@
+'use client';
+
 import { useState } from 'react';
 import JSZip from 'jszip';
-import { webcontainer } from '~/lib/webcontainer';
+import { webcontainer } from '../../lib/webcontainer';
 import type { WebContainer } from '@webcontainer/api';
-import { useStore } from '@nanostores/react';
-import { convexProjectStore } from '~/lib/stores/convexProject';
-import { getFileUpdateCounter, useFileUpdateCounter } from '~/lib/stores/fileUpdateCounter';
+import { getFileUpdateCounter, useFileUpdateCounter } from '../../lib/stores/fileUpdateCounter';
 import { toast } from 'sonner';
-import { streamOutput } from '~/utils/process';
-import { Spinner } from '@ui/Spinner';
+import { streamOutput } from '../../utils/process';
+import { SpinnerThreeDots as Spinner } from '../ui/SpinnerThreeDots';
 import { CheckIcon, ExternalLinkIcon, RocketIcon, UpdateIcon } from '@radix-ui/react-icons';
-import { Button } from '@ui/Button';
-import { useMutation } from 'convex/react';
-import { api } from '@convex/_generated/api';
-import { useChatId } from '~/lib/stores/chatId';
-import { useConvexSessionId } from '~/lib/stores/sessionId';
+import { IconButton as Button } from '../ui/IconButton';
+import { useChatId } from '../../lib/stores/chatId';
+import { useAuth } from '@clerk/nextjs';
 
 interface ErrorResponse {
   error: string;
@@ -25,16 +23,15 @@ type DeployStatus =
   | { type: 'zipping' }
   | { type: 'deploying' }
   | { type: 'error'; message: string }
-  | { type: 'success'; updateCounter: number };
+  | { type: 'success'; updateCounter: number; deployedUrl?: string };
 
 export function DeployButton() {
   const [status, setStatus] = useState<DeployStatus>({ type: 'idle' });
 
-  const convex = useStore(convexProjectStore);
+  // ✅ Replaced: convexProjectStore + useConvexSessionId + useMutation → Clerk
+  const { userId: sessionId, getToken } = useAuth();
   const currentCounter = useFileUpdateCounter();
   const chatId = useChatId();
-  const sessionId = useConvexSessionId();
-  const recordDeploy = useMutation(api.deploy.recordDeploy);
 
   const addFilesToZip = async (container: WebContainer, zip: JSZip, basePath: string, currentPath: string = '') => {
     const fullPath = currentPath ? `${basePath}/${currentPath}` : basePath;
@@ -42,7 +39,6 @@ export function DeployButton() {
 
     for (const entry of entries) {
       const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-
       if (entry.isDirectory()) {
         await addFilesToZip(container, zip, basePath, entryPath);
       } else if (entry.isFile()) {
@@ -57,26 +53,32 @@ export function DeployButton() {
       setStatus({ type: 'building' });
       const container = await webcontainer;
 
-      // Run the build command
+      // Build
       const buildProcess = await container.spawn('vite', ['build', '--mode', 'development']);
       const { output, exitCode } = await streamOutput(buildProcess);
       if (exitCode !== 0) {
         throw new Error(`Build failed: ${output}`);
       }
 
+      // Zip
       setStatus({ type: 'zipping' });
       const zip = new JSZip();
       await addFilesToZip(container, zip, 'dist');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
 
+      // Deploy
       setStatus({ type: 'deploying' });
+      const token = await getToken();
       const formData = new FormData();
       formData.append('file', zipBlob, 'dist.zip');
-      formData.append('deploymentName', convex!.deploymentName);
-      formData.append('token', convex!.token);
+      formData.append('chatId', chatId);
+      formData.append('sessionId', sessionId ?? '');
 
       const response = await fetch('/api/deploy-simple', {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -90,9 +92,18 @@ export function DeployButton() {
         toast.error(`${resp.localDevWarning}`);
       }
 
+      // ✅ Replaced: recordDeploy convex mutation → fetch
+      await fetch('/api/deploy/record', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ chatId, sessionId }),
+      });
+
       const updateCounter = getFileUpdateCounter();
-      setStatus({ type: 'success', updateCounter });
-      await recordDeploy({ id: chatId, sessionId });
+      setStatus({ type: 'success', updateCounter, deployedUrl: resp.url });
     } catch (error) {
       toast.error('Failed to deploy. Please try again.');
       console.error('Deployment error:', error);
@@ -101,7 +112,8 @@ export function DeployButton() {
   };
 
   const isLoading = ['building', 'zipping', 'deploying'].includes(status.type);
-  const isDisabled = isLoading || !convex;
+  // ✅ Replaced: !convex check → !sessionId
+  const isDisabled = isLoading || !sessionId;
 
   let buttonText: string;
   let icon: React.ReactNode;
@@ -160,9 +172,10 @@ export function DeployButton() {
       >
         {buttonText}
       </Button>
-      {status.type === 'success' && convex && (
+      {/* ✅ Replaced: convex.app URL → resp.url from API */}
+      {status.type === 'success' && status.deployedUrl && (
         <Button
-          href={`https://${convex.deploymentName}.convex.app`}
+          href={status.deployedUrl}
           target="_blank"
           size="xs"
           icon={<ExternalLinkIcon />}

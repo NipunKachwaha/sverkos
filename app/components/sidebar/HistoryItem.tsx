@@ -1,7 +1,8 @@
-import { useParams } from '@remix-run/react';
-import { classNames } from '~/utils/classNames';
-import { type ChatHistoryItem } from '~/types/ChatHistoryItem';
-import { useEditChatDescription } from '~/lib/hooks/useEditChatDescription';
+import { useParams } from 'next/navigation'; // <-- Fixed import
+import Link from 'next/link'; // <-- Added Link for Next.js routing
+import { classNames } from '../../utils/classNames';
+import { type ChatHistoryItem } from '../../types/ChatHistoryItem';
+import { useEditChatDescription } from '../../lib/hooks/useEditChatDescription';
 import { CheckIcon, Pencil1Icon, TrashIcon } from '@radix-ui/react-icons';
 import { Button } from '@ui/Button';
 import { TextInput } from '@ui/TextInput';
@@ -12,7 +13,8 @@ interface HistoryItemProps {
 }
 
 export function HistoryItem({ item, handleDeleteClick }: HistoryItemProps) {
-  const { id: urlId } = useParams();
+  const params = useParams();
+  const urlId = params?.id; // Safely extract id
   const isActiveChat = urlId === item.id;
 
   const { editing, handleChange, handleBlur, handleSubmit, handleKeyDown, currentDescription, toggleEditMode } =
@@ -22,8 +24,6 @@ export function HistoryItem({ item, handleDeleteClick }: HistoryItemProps) {
       syncWithGlobalStore: isActiveChat,
     });
 
-  // Chats get a description from the first message, so have a fallback so
-  // they render reasonably
   const description = currentDescription ?? 'New chat…';
 
   return (
@@ -48,7 +48,7 @@ export function HistoryItem({ item, handleDeleteClick }: HistoryItemProps) {
           <Button type="submit" variant="neutral" icon={<CheckIcon />} size="xs" inline onClick={handleSubmit} />
         </form>
       ) : (
-        <a href={`/chat/${item.urlId ?? item.initialId}`} className="relative flex w-full truncate">
+        <Link href={`/chat/${item.urlId ?? item.initialId}`} className="relative flex w-full truncate">
           <span className="truncate pr-24">{description}</span>
           <div
             className={classNames(
@@ -80,7 +80,7 @@ export function HistoryItem({ item, handleDeleteClick }: HistoryItemProps) {
               />
             </div>
           </div>
-        </a>
+        </Link>
       )}
     </div>
   );
