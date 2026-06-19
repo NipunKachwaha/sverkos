@@ -1,8 +1,8 @@
 import type { WebContainer, WebContainerProcess } from '@webcontainer/api';
 import { atom, type WritableAtom } from 'nanostores';
-import type { ITerminal, TerminalInitializationOptions } from '~/types/terminal';
-import { newBoltShellProcess, newShellProcess } from '~/utils/shell';
-import { coloredText } from '~/utils/terminal';
+import type { ITerminal, TerminalInitializationOptions } from '../../types/terminal';
+import { newBoltShellProcess, newShellProcess } from '../../utils/shell';
+import { coloredText } from '../../utils/terminal';
 import { workbenchStore } from './workbench.client';
 import {
   activeTerminalTabStore,

@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import React, { type ReactNode, memo } from 'react';
-import { classNames } from '~/utils/classNames';
-import { cubicEasingFn } from '~/utils/easings';
-import { genericMemo } from '~/utils/react';
+import { classNames } from '../../utils/classNames';
+import { cubicEasingFn } from '../../utils/easings';
+import { genericMemo } from '../../utils/react';
 
 interface SliderOption<T> {
   value: T;

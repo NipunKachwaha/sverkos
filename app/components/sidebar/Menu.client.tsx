@@ -10,14 +10,14 @@ import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
 import { useSearchFilter } from '../../lib/hooks/useSearchFilter';
 import { classNames } from '../../utils/classNames';
-import { useConvex, useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import { getConvexAuthToken, useConvexSessionIdOrNullOrLoading } from '../../lib/stores/sessionId';
 import { getKnownInitialId } from '../../lib/stores/chatId';
 import { Button } from '@ui/Button';
 import { TextInput } from '@ui/TextInput';
 import { Checkbox } from '@ui/Checkbox';
 import { PlusIcon } from '@radix-ui/react-icons';
+import { useAuth } from '@clerk/nextjs'; // <-- Clerk Auth Import Added
+
+const PROVISION_HOST = process.env.NEXT_PUBLIC_PROVISION_HOST || '';
 
 const menuVariants = {
   closed: {
@@ -49,20 +49,57 @@ interface MenuProps {
 
 export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const sessionId = useConvexSessionIdOrNullOrLoading();
-  const convex = useConvex();
-  const list = useQuery(api.messages.getAll, sessionId ? { sessionId } : 'skip') ?? [];
+  const { getToken, isSignedIn } = useAuth(); // Replaced Convex session with Clerk
+
+  // Replaced Convex useQuery with standard React State
+  const [list, setList] = useState<ChatHistoryItem[]>([]);
   const [dialogContent, setDialogContent] = useState<ModalContent>(null);
   const [shouldDeleteConvexProject, setShouldDeleteConvexProject] = useState(false);
-  const convexProjectInfo = useQuery(
-    api.convexProjects.loadConnectedConvexProjectCredentials,
-    dialogContent?.type === 'delete' && sessionId
-      ? {
-          sessionId,
-          chatId: dialogContent.item.initialId,
+  const [convexProjectInfo, setConvexProjectInfo] = useState<any>(null);
+
+  // Fetch Chat History
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    const fetchHistory = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+
+        const response = await fetch(`${PROVISION_HOST}/api/messages/getAll`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setList(data || []);
         }
-      : 'skip',
-  );
+      } catch (error) {
+        console.error('Failed to fetch history:', error);
+      }
+    };
+
+    fetchHistory();
+  }, [isSignedIn, getToken]);
+
+  // Fetch Project Info for Deletion Context
+  useEffect(() => {
+    if (dialogContent?.type === 'delete' && isSignedIn) {
+      const fetchProjectInfo = async () => {
+         try {
+            const token = await getToken();
+            const response = await fetch(`${PROVISION_HOST}/api/convexProjects/loadConnectedConvexProjectCredentials?chatId=${dialogContent.item.initialId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+               setConvexProjectInfo(await response.json());
+            }
+         } catch (e) {
+            // Silently ignore or log if needed
+         }
+      };
+      fetchProjectInfo();
+    }
+  }, [dialogContent, isSignedIn, getToken]);
 
   const { filteredItems: filteredList, handleSearchChange } = useSearchFilter({
     items: list,
@@ -70,42 +107,44 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
   });
 
   const deleteItem = useCallback(
-    (item: ChatHistoryItem) => {
-      const accessToken = getConvexAuthToken(convex);
-      if (!sessionId || !accessToken) {
-        return;
-      }
-      convex
-        .action(api.messages.remove, {
-          id: item.id,
-          sessionId,
-          teamSlug: convexProjectInfo?.teamSlug,
-          projectSlug: convexProjectInfo?.projectSlug,
-          shouldDeleteConvexProject: shouldDeleteConvexProject && convexProjectInfo?.kind === 'connected',
-          accessToken,
-        })
-        .then((result) => {
-          if (result && result.kind === 'error') {
-            toast.error(result.error);
-          }
-          if (getKnownInitialId() === item.initialId) {
-            // hard page navigation to clear the stores
-            window.location.pathname = '/';
-          }
-        })
-        .catch((error) => {
-          toast.error('Failed to delete conversation');
-          logger.error(error);
+    async (item: ChatHistoryItem) => {
+      if (!isSignedIn) return;
+
+      try {
+        const token = await getToken();
+        // Replaced Convex mutation with REST API call
+        const response = await fetch(`${PROVISION_HOST}/api/messages/remove`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: item.id,
+            teamSlug: convexProjectInfo?.teamSlug,
+            projectSlug: convexProjectInfo?.projectSlug,
+            shouldDeleteConvexProject: shouldDeleteConvexProject && convexProjectInfo?.kind === 'connected',
+          }),
         });
+
+        if (!response.ok) {
+          toast.error('Failed to delete conversation');
+          return;
+        }
+
+        if (getKnownInitialId() === item.initialId) {
+          // hard page navigation to clear the stores
+          window.location.pathname = '/';
+        } else {
+          // Update local state without needing a full refetch
+          setList(prev => prev.filter(i => i.id !== item.id));
+        }
+      } catch (error) {
+        toast.error('Failed to delete conversation');
+        logger.error(error);
+      }
     },
-    [
-      convex,
-      sessionId,
-      convexProjectInfo?.teamSlug,
-      convexProjectInfo?.projectSlug,
-      convexProjectInfo?.kind,
-      shouldDeleteConvexProject,
-    ],
+    [isSignedIn, getToken, convexProjectInfo, shouldDeleteConvexProject],
   );
 
   const closeDialog = () => {
@@ -141,7 +180,7 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
   }, []);
 
   // Don't show the menu at all when logged out
-  if (sessionId === null) {
+  if (!isSignedIn) {
     return null;
   }
 

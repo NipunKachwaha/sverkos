@@ -9,7 +9,8 @@ const DEFAULT_THEME = 'light';
 export const themeStore = atom<Theme>(initStore());
 
 function initStore() {
-  if (!import.meta.env.SSR) {
+  // FIX: Vite ke import.meta.env.SSR ki jagah Next.js ka standard window check
+  if (typeof window !== 'undefined') {
     const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
     const themeAttribute = document.querySelector('html')?.getAttribute('class');
 
@@ -26,22 +27,25 @@ export function toggleTheme() {
   // Update the theme store
   themeStore.set(newTheme);
 
-  // Update localStorage
-  localStorage.setItem(kTheme, newTheme);
+  // Safety check added for Next.js SSR compatibility
+  if (typeof window !== 'undefined') {
+    // Update localStorage
+    localStorage.setItem(kTheme, newTheme);
 
-  // Update the HTML attribute
-  document.querySelector('html')?.setAttribute('class', newTheme);
+    // Update the HTML attribute
+    document.querySelector('html')?.setAttribute('class', newTheme);
 
-  // Update user profile if it exists
-  try {
-    const userProfile = localStorage.getItem('bolt_user_profile');
+    // Update user profile if it exists
+    try {
+      const userProfile = localStorage.getItem('bolt_user_profile');
 
-    if (userProfile) {
-      const profile = JSON.parse(userProfile);
-      profile.theme = newTheme;
-      localStorage.setItem('bolt_user_profile', JSON.stringify(profile));
+      if (userProfile) {
+        const profile = JSON.parse(userProfile);
+        profile.theme = newTheme;
+        localStorage.setItem('bolt_user_profile', JSON.stringify(profile));
+      }
+    } catch (error) {
+      console.error('Error updating user profile theme:', error);
     }
-  } catch (error) {
-    console.error('Error updating user profile theme:', error);
   }
 }

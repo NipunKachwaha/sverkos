@@ -1,17 +1,34 @@
-import { map, computed, onMount } from 'nanostores';
+import { map, computed, onMount, atom } from 'nanostores';
 import { useStore } from '@nanostores/react';
-import { useConvex } from 'convex/react';
-import { convexAuthTokenStore, getConvexAuthToken } from '~/lib/stores/sessionId';
-import { VITE_PROVISION_HOST } from '~/lib/convexProvisionHost';
+import { useAuth } from '@clerk/nextjs'; // <-- Clerk import added
 import { debugOverrideStore, debugOverrideEnabledStore } from './debug';
 import { queryClientStore } from './reactQueryClient';
 import { QueryObserver } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
 
+// Pichli file jaisa hi VITE_PROVISION_HOST ka error avoid karne ke liye safe fallback
+const PROVISION_HOST = process.env.NEXT_PUBLIC_PROVISION_HOST || '';
+
+// Clerk token ko React component ke bahar (queryFn mein) access karne ke liye local store
+export const clerkAuthTokenStore = atom<string | null>(null);
+
 export function useTokenUsage(teamSlug: string | null): TeamUsageState {
-  // getConvexAuthToken has a side effect may need
-  const convex = useConvex();
-  void getConvexAuthToken(convex);
+  const { getToken } = useAuth();
+
+  // Clerk se async token fetch karke store mein update karte hain
+  useEffect(() => {
+    const updateToken = async () => {
+      try {
+        const token = await getToken();
+        if (token) {
+          clerkAuthTokenStore.set(token);
+        }
+      } catch (e) {
+        console.error("Failed to fetch Clerk token", e);
+      }
+    };
+    updateToken();
+  }, [getToken]);
 
   const usageByTeam = useStore(usageStore);
 
@@ -34,14 +51,14 @@ export function useTokenUsage(teamSlug: string | null): TeamUsageState {
 
 export async function getTokenUsage(
   provisionHost: string,
-  convexAuthToken: string,
+  authToken: string,
   teamSlug: string,
 ): Promise<UsageData> {
   const url = `${provisionHost}/api/dashboard/teams/${teamSlug}/usage/get_token_info`;
   const response = await fetch(url, {
     method: 'GET',
     headers: {
-      Authorization: `Bearer ${convexAuthToken}`,
+      Authorization: `Bearer ${authToken}`,
       'Content-Type': 'application/json',
     },
   });
@@ -52,14 +69,12 @@ export async function getTokenUsage(
   const {
     centitokensUsed,
     centitokensQuota,
-    //isTeamDisabled,
     isPaidPlan,
   }: { centitokensUsed: number; centitokensQuota: number; isTeamDisabled: boolean; isPaidPlan: boolean } =
     await response.json();
   return {
     centitokensUsed,
     centitokensQuota,
-    //isTeamDisabled,
     isPaidPlan,
   };
 }
@@ -94,7 +109,8 @@ onMount(serverTeamUsageStore, () => {
     }
     const observer = new QueryObserver<UsageData>(queryClientStore.get(), {
       queryKey: ['teamUsage', teamSlug],
-      queryFn: async () => await getTokenUsage(VITE_PROVISION_HOST, convexAuthTokenStore.get()!, teamSlug),
+      // VITE hata kar PROVISION_HOST variable lagaya aur convexAuthToken ki jagah clerkAuthTokenStore use kiya
+      queryFn: async () => await getTokenUsage(PROVISION_HOST, clerkAuthTokenStore.get() || '', teamSlug),
       // TODO instead of fetching so much, refetch when know some tokens were just used
       refetchInterval: 10 * 60 * 1000,
     });

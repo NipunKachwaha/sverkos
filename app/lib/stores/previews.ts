@@ -14,9 +14,8 @@ export interface PreviewInfo {
 
 const PROXY_PORT_RANGE_START = 0xc4ef;
 
-// This is a separate codebase.
-// eslint-disable-next-line no-restricted-imports
-import PROXY_SERVER_SOURCE from '../../../proxy/proxy.bundled.cjs?raw';
+// Vite ka ?raw import Next.js mein kaam nahi karta, isliye usko yahan se hata diya gaya hai.
+// Ab hum is file ko fetch() ke zariye runtime par layenge.
 
 type ProxyState = { sourcePort: number; start: (arg: { proxyUrl: string }) => void; stop: () => void };
 
@@ -75,10 +74,6 @@ export class PreviewsStore {
 
   /**
    * Starts a proxy server for the given source port.
-   *
-   * Proxy servers are used so that each time a preview is shown on screen,
-   * each preview has a different origin. This helps when testing apps with
-   * auth with multiple users.
    */
   async startProxy(sourcePort: number): Promise<{ proxyPort: number; proxyUrl: string }> {
     const targetPort = PROXY_PORT_RANGE_START + this.#proxies.size;
@@ -90,18 +85,22 @@ export class PreviewsStore {
       sourcePort,
       start,
       stop() {
-        // This should never happen since the external users don’t get access to
-        // the ProxyState object before `startProxy` returns (unless they guess
-        // the port number)
         throw new Error('Proxy not started');
       },
     };
     this.#proxies.set(targetPort, proxyState);
 
-    // Start the HTTP + HMR WebSocket proxy
     const webcontainer = await this.#webcontainer;
 
+    // NAYA LOGIC: Public folder se proxy script fetch kar rahe hain
+    const proxyRes = await fetch('/proxy.bundled.cjs');
+    if (!proxyRes.ok) {
+      throw new Error('Failed to load proxy.bundled.cjs. Please make sure it is inside the "public" folder.');
+    }
+    const PROXY_SERVER_SOURCE = await proxyRes.text();
+
     const proxyScriptLocation = '/tmp/previewProxy.cjs';
+    
     // webcontainer.writeFile seems incapable of writing to /tmp/foo
     // so use sh instead. It's important that this string has no
     // single quote characters ' in it so this naive escaping works.

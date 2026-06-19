@@ -1,8 +1,8 @@
-import { convexTeamsStore } from '~/lib/stores/convexTeams';
+import { convexTeamsStore } from '../../lib/stores/convexTeams';
 import { useStore } from '@nanostores/react';
 import { Combobox } from '@ui/Combobox';
 import { memo } from 'react';
-import { classNames } from '~/utils/classNames';
+import { classNames } from '../../utils/classNames';
 
 export const TeamSelector = memo(function TeamSelector({
   selectedTeamSlug,

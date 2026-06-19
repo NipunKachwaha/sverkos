@@ -1,8 +1,8 @@
 import { useQuery as useReactQuery } from '@tanstack/react-query';
 import { useAuthToken } from './useDebugPrompt';
-import { VITE_PROVISION_HOST } from '~/lib/convexProvisionHost';
-import { useSelectedTeam } from '~/lib/stores/convexTeams';
-import { queryClientStore } from '~/lib/stores/reactQueryClient';
+import { APP_URL } from '../provisionHost';
+import { useSelectedTeam } from '../stores/convexTeams';
+import { queryClientStore } from '../stores/reactQueryClient';
 
 export function useReferralCode() {
   const team = useSelectedTeam();
@@ -35,7 +35,7 @@ export function useReferralStats() {
 }
 
 export async function bbGet(path: string, authToken: string) {
-  const url = `${VITE_PROVISION_HOST}${path}`;
+  const url = `${APP_URL}${path}`;
   const response = await fetch(url, {
     method: 'GET',
     headers: {

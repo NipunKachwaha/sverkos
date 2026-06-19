@@ -23,7 +23,7 @@ import type { ConvexToolInvocation } from '../../lib/common/types';
 import { getTerminalTheme } from '../workbench/terminal/theme';
 import { FitAddon } from '@xterm/addon-fit';
 import { viewParameters } from '../../../lib/agent/tools/view';
-import { getHighlighter } from 'shiki';
+import { createHighlighter } from 'shiki'; // <-- FIXED: getHighlighter to createHighlighter
 import { themeStore } from '../../lib/stores/theme';
 import { getLanguageFromExtension } from '../../utils/getLanguageFromExtension';
 import { path } from '../../../lib/agent/utils/path';
@@ -32,7 +32,7 @@ import { npmInstallToolParameters } from '../../../lib/agent/tools/npmInstall';
 import { loggingSafeParse } from '../../../lib/agent/utils/zodUtil';
 import { deployToolParameters } from '../../../lib/agent/tools/deploy';
 import type { ZodError } from 'zod';
-import { Spinner } from '@ui/Spinner';
+import { Spinner } from '../ui/Spinner'; // Adjusted path if needed
 import { FolderIcon } from '@heroicons/react/24/outline';
 import { outputLabels } from '../../lib/runtime/deployToolOutputLabels';
 import { getRelativePath } from '../../../lib/agent/utils/workDir';
@@ -575,7 +575,8 @@ const LineNumberViewer = memo(function LineNumberViewer({
   const theme = useStore(themeStore);
 
   useEffect(() => {
-    getHighlighter({
+    // FIXED: getHighlighter to createHighlighter
+    createHighlighter({
       themes: ['github-dark', 'github-light'],
       langs: [
         'typescript',

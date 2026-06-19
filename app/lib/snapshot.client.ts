@@ -1,4 +1,4 @@
-import { IGNORED_RELATIVE_PATHS } from '~/utils/constants';
+import { IGNORED_RELATIVE_PATHS } from '../utils/constants';
 import { webcontainer } from './webcontainer';
 
 export async function buildUncompressedSnapshot(): Promise<Uint8Array> {

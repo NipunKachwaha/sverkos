@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useDebugState } from '~/lib/stores/debug';
+import { useDebugState } from '../../lib/stores/debug';
 import { DraggableDebugView } from './DraggableDebugView';
-import { useSelectedTeamSlug } from '~/lib/stores/convexTeams';
-import { serverTeamUsageStore } from '~/lib/stores/usage';
+import { useSelectedTeamSlug } from '../../lib/stores/convexTeams';
+import { serverTeamUsageStore } from '../../lib/stores/usage';
 
 export function UsageDebugView() {
   const { isVisible, setVisible, setOverride, isOverriding, setIsOverriding } = useDebugState('usage');

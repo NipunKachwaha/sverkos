@@ -18,7 +18,7 @@ const pageLoadChatId = atom<string | undefined>(undefined);
 export function setPageLoadChatId(chatId: string) {
   const existing = pageLoadChatId.get();
   if (existing !== undefined && existing !== chatId) {
-    throw new Error(`pageLoadChatId already set to ${existing} but trying to set to ${chatId}`);
+    console.warn(`pageLoadChatId already set to ${existing} but trying to set to ${chatId}`);
   }
   setChefDebugProperty('chatInitialId', chatId);
   pageLoadChatId.set(chatId);

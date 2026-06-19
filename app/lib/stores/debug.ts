@@ -1,6 +1,6 @@
 import { map } from 'nanostores';
 import { useStore } from '@nanostores/react';
-import type { UsageData } from '~/lib/stores/usage';
+import type { UsageData } from '../../lib/stores/usage';
 
 const views = ['usage'] as const;
 type DebugView = (typeof views)[number];

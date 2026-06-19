@@ -1,6 +1,6 @@
 import { Button } from '@ui/Button';
 import { toast } from 'sonner';
-import { useReferralCode, useReferralStats } from '~/lib/hooks/useReferralCode';
+import { useReferralCode, useReferralStats } from '../../lib/hooks/useReferralCode';
 import * as Popover from '@radix-ui/react-popover';
 import { ClipboardIcon } from '@radix-ui/react-icons';
 import { useState } from 'react';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getRelativePath } from 'chef-agent/utils/workDir';
-import { WORK_DIR } from 'chef-agent/constants';
+import { getRelativePath } from '../../lib/agent/utils/workDir';
+import { WORK_DIR } from '../../lib/agent/constants';
 
 describe('Diff', () => {
   it('should strip out Work_dir', () => {

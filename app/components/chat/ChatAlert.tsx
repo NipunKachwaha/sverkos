@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import type { ActionAlert } from '~/types/actions';
-import { classNames } from '~/utils/classNames';
+import type { ActionAlert } from '../../types/actions';
+import { classNames } from '../../utils/classNames';
 import { ExclamationTriangleIcon, ChatBubbleIcon } from '@radix-ui/react-icons';
 
 interface Props {

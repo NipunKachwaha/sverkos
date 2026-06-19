@@ -1,9 +1,9 @@
 import { useStore } from '@nanostores/react';
 import { ChatBubbleIcon, CodeIcon } from '@radix-ui/react-icons';
 import { Button } from '@ui/Button';
-import useViewport from '~/lib/hooks/useViewport';
-import { chatStore } from '~/lib/stores/chatId';
-import { workbenchStore } from '~/lib/stores/workbench.client';
+import useViewport from '../../lib/hooks/useViewport';
+import { chatStore } from '../../lib/stores/chatId';
+import { workbenchStore } from '../../lib/stores/workbench.client';
 
 interface HeaderActionButtonsProps {}
 

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { classNames } from '../../utils/classNames';
 import { useStore } from '@nanostores/react';
 import { chatStore } from '../../lib/stores/chatId';
-import { Spinner } from '../../components/ui/SpinnerThreeDots';
+import { Spinner } from '../../components/ui/Spinner';
 import { ExclamationTriangleIcon, CheckCircledIcon, ResetIcon, ClipboardIcon } from '@radix-ui/react-icons';
 import { useEffect, useState } from 'react';
 import { IconButton as Button } from '../ui/IconButton';

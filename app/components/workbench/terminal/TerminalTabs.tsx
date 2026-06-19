@@ -2,18 +2,18 @@ import { useStore } from '@nanostores/react';
 import type { Terminal as XTerm } from '@xterm/xterm';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, type ImperativePanelHandle } from 'react-resizable-panels';
-import { IconButton } from '~/components/ui/IconButton';
-import { themeStore } from '~/lib/stores/theme';
-import { workbenchStore } from '~/lib/stores/workbench.client';
-import { classNames } from '~/utils/classNames';
+import { IconButton } from '../../ui/IconButton';
+import { themeStore } from '../../../lib/stores/theme';
+import { workbenchStore } from '../../../lib/stores/workbench.client';
+import { classNames } from '../../../utils/classNames';
 import { Terminal } from './Terminal';
-import type { TerminalInitializationOptions } from '~/types/terminal';
+import type { TerminalInitializationOptions } from '../../../types/terminal';
 import {
   activeTerminalTabStore,
   isConvexDeployTerminalVisibleStore,
   VITE_TAB_INDEX,
   CONVEX_DEPLOY_TAB_INDEX,
-} from '~/lib/stores/terminalTabs';
+} from '../../../lib/stores/terminalTabs';
 import { CommandLineIcon } from '@heroicons/react/24/outline';
 import { CaretDownIcon, PlusIcon } from '@radix-ui/react-icons';
 

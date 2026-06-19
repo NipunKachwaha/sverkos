@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { Message } from '@ai-sdk/react';
-import { lastCompleteMessageInfoStore } from '~/lib/stores/startup/messages';
+import { lastCompleteMessageInfoStore } from './messages';
 
 /**
  * This returns a function that takes in `messages` and `streamStatus` and updates

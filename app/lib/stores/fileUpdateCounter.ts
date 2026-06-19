@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { atom } from 'nanostores';
-import { IGNORED_PATHS } from '~/utils/constants';
+import { IGNORED_PATHS } from '../../utils/constants';
 import { chatSyncState } from './startup/chatSyncState';
 
 const fileUpdateCounter = atom(0);

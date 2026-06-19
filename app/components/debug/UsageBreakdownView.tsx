@@ -7,19 +7,19 @@ import { JsonView } from 'react-json-view-lite';
 import 'react-json-view-lite/dist/index.css';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type ChartOptions } from 'chart.js';
-import { parseAnnotations, type ProviderType, type Usage, type UsageAnnotation } from '~/lib/common/annotations';
+import { parseAnnotations, type ProviderType, type Usage, type UsageAnnotation } from '../../lib/common/annotations';
 import {
   calculateChefTokens,
   getFailedToolCalls,
   calculateTotalUsage,
   initializeUsage,
   usageFromGeneration,
-} from '~/lib/common/usage';
-import { decompressWithLz4 } from '~/lib/compression.client';
+} from '../../lib/common/usage';
+import { decompressWithLz4 } from '../../lib/compression.client';
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { getConvexAuthToken } from '~/lib/stores/sessionId';
-import { useConvex } from 'convex/react';
-import { setChefDebugProperty } from 'chef-agent/utils/chefDebug';
+import { useAuth } from '@clerk/nextjs'; // <-- Clerk import added
+import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
+
 // Register Chart.js components - needs to include ALL required elements
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -91,7 +91,10 @@ export function UsageBreakdownView({
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [usageData, setUsageData] = useState<DebugUsageData | null>(null);
-  const convex = useConvex();
+  
+  // Clerk ka auth hook use kiya gaya hai
+  const { getToken } = useAuth();
+
   useEffect(() => {
     if (fileContent !== null) {
       async function parseFileContent(blob: Blob) {
@@ -103,7 +106,8 @@ export function UsageBreakdownView({
       void parseFileContent(fileContent);
     } else {
       const fetchUsageData = async () => {
-        const authToken = await getConvexAuthToken(convex);
+        // Clerk se auth token nikala gaya hai
+        const authToken = await getToken();
         const response = await fetch(`${convexSiteUrl}/__debug/download_messages`, {
           method: 'POST',
           body: JSON.stringify({ chatUuid: chatInitialId }),
@@ -123,7 +127,7 @@ export function UsageBreakdownView({
       };
       void fetchUsageData();
     }
-  }, [chatInitialId, fileContent, convexSiteUrl, convex]);
+  }, [chatInitialId, fileContent, convexSiteUrl, getToken]);
 
   useEffect(() => {
     if (messages.length === 0) {

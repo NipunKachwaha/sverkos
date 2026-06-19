@@ -1,4 +1,4 @@
-import { VITE_PROVISION_HOST } from './provisionHost';
+import { APP_URL } from './provisionHost';
 
 export interface ConvexProfile {
   name: string;
@@ -7,7 +7,7 @@ export interface ConvexProfile {
 }
 
 export async function getConvexProfile(convexAuthToken: string): Promise<ConvexProfile> {
-  const url = `${VITE_PROVISION_HOST}/api/dashboard/profile`;
+  const url = `${APP_URL}/api/dashboard/profile`;
   const response = await fetch(url, {
     method: 'GET',
     headers: {

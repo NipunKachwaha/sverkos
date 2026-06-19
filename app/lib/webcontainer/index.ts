@@ -10,13 +10,13 @@ interface WebContainerContext {
   loaded: boolean;
 }
 
-const webcontainerContext: WebContainerContext = import.meta.hot?.data.webcontainerContext ?? {
+// Next.js mein HMR caching ke liye globalThis ka safe use
+const globalContext = globalThis as any;
+
+const webcontainerContext: WebContainerContext = globalContext.__webcontainerContext ?? {
   loaded: false,
 };
-
-if (import.meta.hot) {
-  import.meta.hot.data.webcontainerContext = webcontainerContext;
-}
+globalContext.__webcontainerContext = webcontainerContext;
 
 export let webcontainer: Promise<WebContainer> = new Promise(() => {
   // noop for ssr
@@ -25,7 +25,9 @@ export let webcontainer: Promise<WebContainer> = new Promise(() => {
 const logger = createScopedLogger('webcontainer');
 
 let shouldBootWebcontainer = false;
-if (!import.meta.env.SSR) {
+
+// FIX: Vite ke import.meta.env.SSR ki jagah Next.js ka standard window check
+if (typeof window !== 'undefined') {
   const experience = chooseExperience(navigator.userAgent, window.crossOriginIsolated);
 
   shouldBootWebcontainer = experience === 'the-real-thing' || experience === 'mobile-warning';
@@ -36,7 +38,7 @@ if (!import.meta.env.SSR) {
 
 if (shouldBootWebcontainer) {
   webcontainer =
-    import.meta.hot?.data.webcontainer ??
+    globalContext.__webcontainer ??
     Promise.resolve()
       .then(() => {
         setContainerBootState(ContainerBootState.STARTING);
@@ -46,9 +48,9 @@ if (shouldBootWebcontainer) {
           forwardPreviewErrors: true, // Enable error forwarding from iframes
         });
       })
-      .then(async (webcontainer) => {
+      .then(async (webcontainerInstance) => {
         // Listen for preview errors
-        webcontainer.on('preview-message', (message) => {
+        webcontainerInstance.on('preview-message', (message) => {
           logger.info('WebContainer preview message:', JSON.stringify(message));
 
           // Handle both uncaught exceptions and unhandled promise rejections
@@ -66,15 +68,13 @@ if (shouldBootWebcontainer) {
         // Set the container boot state to LOADING_SNAPSHOT to hand off control
         // to the container setup code.
         setContainerBootState(ContainerBootState.LOADING_SNAPSHOT);
-        (globalThis as any).webcontainer = webcontainer;
-        return webcontainer;
+        globalContext.webcontainer = webcontainerInstance;
+        return webcontainerInstance;
       })
       .catch((error) => {
         setContainerBootState(ContainerBootState.ERROR, error);
         throw error;
       });
 
-  if (import.meta.hot) {
-    import.meta.hot.data.webcontainer = webcontainer;
-  }
+  globalContext.__webcontainer = webcontainer;
 }
