@@ -58,8 +58,6 @@ export const Workbench = memo(function Workbench({
 }: WorkspaceProps) {
   renderLogger.trace('Workbench');
 
-  // const modifiedFiles = Array.from(useStore(workbenchStore.unsavedFiles).keys());
-
   const hasPreview = useStore(computed(workbenchStore.previews, (previews) => previews.length > 0));
   const showWorkbench = useStore(workbenchStore.showWorkbench);
   const selectedFile = useStore(workbenchStore.selectedFile);
@@ -91,9 +89,6 @@ export const Workbench = memo(function Workbench({
 
   const onEditorChange = useCallback<OnEditorChange>(
     (update) => {
-      // This is called debounced, so it's not fair to use it to update
-      // the current doc: we don't actually know which files it's for!
-
       const updateAbsPath = getAbsolutePath(update.filePath);
       if (currentDocumentPath !== updateAbsPath) {
         console.log(
@@ -132,7 +127,7 @@ export const Workbench = memo(function Workbench({
     workbenchStore.resetCurrentDocument();
   }, []);
 
-  const showDashboard = useStore(convexProjectStore) !== null;
+  const showDashboard = false; 
 
   const sliderOptions: SliderOptions<WorkbenchViewType> = useMemo(
     () => ({
@@ -163,7 +158,6 @@ export const Workbench = memo(function Workbench({
     [showDashboard],
   );
 
-  // TODO get rid of fileHistory since we don't use it
   const fileHistory = useMemo(() => ({}), []);
 
   return (
@@ -273,7 +267,6 @@ export const Workbench = memo(function Workbench({
   );
 });
 
-// View component for rendering content with motion transitions
 interface ViewProps extends HTMLMotionProps<'div'> {
   children: JSX.Element;
 }

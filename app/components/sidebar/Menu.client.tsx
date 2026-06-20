@@ -15,7 +15,7 @@ import { Button } from '@ui/Button';
 import { TextInput } from '@ui/TextInput';
 import { Checkbox } from '@ui/Checkbox';
 import { PlusIcon } from '@radix-ui/react-icons';
-import { useAuth } from '@clerk/nextjs'; // <-- Clerk Auth Import Added
+import { useAuth } from '@clerk/nextjs'; 
 
 const PROVISION_HOST = process.env.NEXT_PUBLIC_PROVISION_HOST || '';
 
@@ -24,19 +24,13 @@ const menuVariants = {
     opacity: 0,
     visibility: 'hidden',
     left: '-340px',
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
+    transition: { duration: 0.2, ease: cubicEasingFn },
   },
   open: {
     opacity: 1,
     visibility: 'initial',
     left: 0,
-    transition: {
-      duration: 0.2,
-      ease: cubicEasingFn,
-    },
+    transition: { duration: 0.2, ease: cubicEasingFn },
   },
 } satisfies Variants;
 
@@ -49,15 +43,14 @@ interface MenuProps {
 
 export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { getToken, isSignedIn } = useAuth(); // Replaced Convex session with Clerk
+  const { getToken, isSignedIn } = useAuth(); 
 
-  // Replaced Convex useQuery with standard React State
   const [list, setList] = useState<ChatHistoryItem[]>([]);
   const [dialogContent, setDialogContent] = useState<ModalContent>(null);
   const [shouldDeleteConvexProject, setShouldDeleteConvexProject] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [convexProjectInfo, setConvexProjectInfo] = useState<any>(null);
 
-  // Fetch Chat History
   useEffect(() => {
     if (!isSignedIn) return;
 
@@ -81,7 +74,6 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
     fetchHistory();
   }, [isSignedIn, getToken]);
 
-  // Fetch Project Info for Deletion Context
   useEffect(() => {
     if (dialogContent?.type === 'delete' && isSignedIn) {
       const fetchProjectInfo = async () => {
@@ -94,7 +86,7 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
                setConvexProjectInfo(await response.json());
             }
          } catch (e) {
-            // Silently ignore or log if needed
+            console.error('Failed to load project info:', e);
          }
       };
       fetchProjectInfo();
@@ -112,7 +104,6 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
 
       try {
         const token = await getToken();
-        // Replaced Convex mutation with REST API call
         const response = await fetch(`${PROVISION_HOST}/api/messages/remove`, {
           method: 'POST',
           headers: {
@@ -133,10 +124,8 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
         }
 
         if (getKnownInitialId() === item.initialId) {
-          // hard page navigation to clear the stores
           window.location.pathname = '/';
         } else {
-          // Update local state without needing a full refetch
           setList(prev => prev.filter(i => i.id !== item.id));
         }
       } catch (error) {
@@ -156,7 +145,6 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
     function handleClickOutside(event: MouseEvent) {
       const target = event.target as Element;
 
-      // Don't close if clicking on the hamburger icon
       if (target?.closest('[data-hamburger-menu]')) {
         return;
       }
@@ -179,7 +167,6 @@ export const Menu = memo(({ isOpen, onClose }: MenuProps) => {
     setDialogContent({ type: 'delete', item });
   }, []);
 
-  // Don't show the menu at all when logged out
   if (!isSignedIn) {
     return null;
   }

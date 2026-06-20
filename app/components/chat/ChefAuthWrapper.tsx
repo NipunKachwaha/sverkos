@@ -1,8 +1,7 @@
 'use client';
 
 import { useAuth, useUser } from '@clerk/nextjs';
-import { createContext, useContext, useEffect, useRef } from 'react';
-import { useLocalStorage } from '@uidotdev/usehooks';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
 
@@ -61,10 +60,36 @@ export const ChefAuthProvider = ({
   const isAuthenticated = !!isSignedIn;
   const isAuthLoading = !isLoaded;
 
-  const [sessionIdFromLocalStorage, setSessionIdFromLocalStorage] = useLocalStorage<string | null>(
-    SESSION_ID_KEY,
-    null,
-  );
+  // FIX 1: Removed @uidotdev/usehooks and implemented an SSR-safe localStorage hook
+  const [sessionIdFromLocalStorage, setSessionIdState] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const item = window.localStorage.getItem(SESSION_ID_KEY);
+        if (item) {
+          setSessionIdState(JSON.parse(item));
+        }
+      } catch (error) {
+        console.warn('Error reading localStorage', error);
+      }
+    }
+  }, []);
+
+  const setSessionIdFromLocalStorage = useCallback((value: string | null) => {
+    try {
+      setSessionIdState(value);
+      if (typeof window !== 'undefined') {
+        if (value === null) {
+          window.localStorage.removeItem(SESSION_ID_KEY);
+        } else {
+          window.localStorage.setItem(SESSION_ID_KEY, JSON.stringify(value));
+        }
+      }
+    } catch (error) {
+      console.warn('Error setting localStorage', error);
+    }
+  }, []);
 
   const hasAlertedAboutOptIns = useRef(false);
   const authRetries = useRef(0);
@@ -181,11 +206,13 @@ export const ChefAuthProvider = ({
       ? { kind: 'unauthenticated' }
       : { kind: 'fullyLoggedIn', sessionId: sessionId as string };
 
-  // Same redirect logic as original
-  if (redirectIfUnauthenticated && state.kind === 'unauthenticated') {
-    console.log('redirecting to /');
-    window.location.href = '/';
-  }
+  // FIX 2: Wrapped redirect in useEffect for SSR safety
+  useEffect(() => {
+    if (redirectIfUnauthenticated && state.kind === 'unauthenticated') {
+      console.log('redirecting to /');
+      window.location.href = '/';
+    }
+  }, [redirectIfUnauthenticated, state.kind]);
 
   return (
     <ChefAuthContext.Provider value={{ state }}>

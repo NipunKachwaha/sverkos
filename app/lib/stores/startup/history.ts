@@ -1,13 +1,12 @@
 'use client';
 
 import type { Message } from 'ai';
-import { useConvex, useQuery, type ConvexReactClient } from 'convex/react';
+// Removed Convex imports completely
 import { useConvexSessionIdOrNullOrLoading, waitForConvexSessionId } from '../sessionId';
 import { getFileUpdateCounter, waitForFileUpdateCounterChanged } from '../fileUpdateCounter';
 import { buildUncompressedSnapshot } from '../../snapshot.client';
-import type { Id } from '@/convex/_generated/dataModel';
 import { backoffTime } from '../../../utils/constants';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { compressWithLz4 } from '../../compression';
 import {
   handleUrlHintAndDescription,
@@ -18,28 +17,52 @@ import {
 import { createScopedLogger } from '../../../../lib/agent/utils/logger';
 import { useStore } from '@nanostores/react';
 import { subchatIndexStore, waitForSubchatIndexChanged } from '../subchats';
-import { api } from '@/convex/_generated/api';
 import { workbenchStore } from '../workbench.client';
 import { chatSyncState, type BackupSyncState, type InitialBackupSyncState } from './chatSyncState';
 import { toast } from 'sonner';
+import { useAuth } from '@clerk/nextjs'; // <-- Added Clerk Auth
 
 const logger = createScopedLogger('history');
 
 const BACKUP_DEBOUNCE_MS = 1000;
+const PROVISION_HOST = process.env.NEXT_PUBLIC_PROVISION_HOST || '';
 
 export function useBackupSyncState(chatId: string, loadedSubchatIndex?: number, initialMessages?: Message[]) {
-  const convex = useConvex();
+  const { getToken } = useAuth(); // Replaced useConvex with Clerk's getToken
   const subchatIndex = useStore(subchatIndexStore);
   const sessionId = useConvexSessionIdOrNullOrLoading();
-  const chatInfo = useQuery(
-    api.messages.get,
-    sessionId
-      ? {
-          id: chatId,
-          sessionId,
+  
+  // Replaced Convex useQuery with standard React State and fetch
+  const [chatInfo, setChatInfo] = useState<any>(null);
+
+  useEffect(() => {
+    if (!sessionId || !chatId) return;
+
+    let isMounted = true;
+    const fetchChatInfo = async () => {
+      try {
+        const token = await getToken();
+        const response = await fetch(`${PROVISION_HOST}/api/messages/get`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ id: chatId, sessionId }),
+        });
+
+        if (response.ok && isMounted) {
+          setChatInfo(await response.json());
         }
-      : 'skip',
-  );
+      } catch (e) {
+        console.error('Failed to fetch chat info:', e);
+      }
+    };
+
+    fetchChatInfo();
+    return () => { isMounted = false; };
+  }, [chatId, sessionId, getToken]);
+
   useEffect(() => {
     if (initialMessages !== undefined) {
       const lastMessage = initialMessages[initialMessages.length - 1];
@@ -67,6 +90,7 @@ export function useBackupSyncState(chatId: string, loadedSubchatIndex?: number, 
       }
     }
   }, [initialMessages, loadedSubchatIndex]);
+
   useEffect(() => {
     const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
       const currentState = chatSyncState.get();
@@ -92,41 +116,38 @@ export function useBackupSyncState(chatId: string, loadedSubchatIndex?: number, 
       window.removeEventListener('beforeunload', beforeUnloadHandler);
     };
   }, []);
+
   useEffect(() => {
     const run = async () => {
-      const sessionId = await waitForConvexSessionId('useBackupSyncState');
+      const sessionIdStr = await waitForConvexSessionId('useBackupSyncState');
       // Open the workbench by default if you have more than one subchat
       if (chatInfo && chatInfo.subchatIndex > 0) {
         workbenchStore.showWorkbench.set(true);
       }
       void chatSyncWorker({
         chatId,
-        sessionId,
-        convex,
+        sessionId: sessionIdStr,
+        getToken, // Pass getToken instead of convex
         currentSubchatIndex: subchatIndex,
         latestSubchatIndex: chatInfo?.subchatIndex,
       });
     };
     void run();
-  }, [chatId, convex, subchatIndex, chatInfo]);
+  }, [chatId, getToken, subchatIndex, chatInfo]);
 }
 
 /**
  * This worker handles syncing both the chat history + the snapshot of the filesystem
  * state to the server.
- *
- * It holds the state of what it's synced so far in `chatSyncState` and listens for
- * changes to `lastCompleteMessageInfoStore` and `fileUpdateCounter` respectively
- * to know when to sync.
  */
 async function chatSyncWorker(args: {
   chatId: string;
-  sessionId: Id<'sessions'>;
-  convex: ConvexReactClient;
+  sessionId: string; // Replaced Id<'sessions'> with string
+  getToken: () => Promise<string | null>; // Replaced ConvexReactClient
   currentSubchatIndex: number | undefined;
   latestSubchatIndex: number | undefined;
 }) {
-  const { chatId, sessionId, convex } = args;
+  const { chatId, sessionId, getToken } = args;
   const currentState = chatSyncState.get();
   if (currentState.started) {
     return;
@@ -210,8 +231,10 @@ async function chatSyncWorker(args: {
       snapshotBlob = await prepareBackup();
     }
     if (urlHintAndDescription !== null) {
+      // NOTE: Passing 'getToken as any' here. Be sure to update handleUrlHintAndDescription
+      // inside your 'messages.ts' file to accept a getToken function or standard token string instead of Convex!
       await handleUrlHintAndDescription(
-        convex,
+        getToken as any,
         chatId,
         sessionId,
         urlHintAndDescription.urlHint,

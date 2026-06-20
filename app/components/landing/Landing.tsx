@@ -24,9 +24,9 @@ export default function Landing() {
         </div>
         <div className="flex flex-col gap-6 px-4 py-6 text-lg text-neutral-9 dark:text-neutral-2">
           <p>
-            Chef is open-source, check out the GitHub repo{' '}
+            Sverkos is open-source, check out the GitHub repo{' '}
             <a
-              href="https://github.com/get-convex/chef"
+              href="https://github.com/NipunKachwaha/sverkos"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
               here
@@ -36,17 +36,17 @@ export default function Landing() {
           <p>
             This is the only AI app builder that knows backend. By applying{' '}
             <a
-              href="https://convex.dev"
+              href="https://sverkos.ai"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
-              Convex
+              Sverkos
             </a>{' '}
             primitives directly to your code generation, your apps are automatically equipped with optimal backend
             patterns and best practices. Your full-stack apps come with a built-in database, zero config auth, file
             uploads, real-time UIs, and background workflows. If you want to check out the secret sauce that powers
-            Chef, you can view or download the system prompt{' '}
+            Sverkos, you can view or download the system prompt{' '}
             <a
-              href="https://github.com/get-convex/chef/releases/latest"
+              href="https://github.com/NipunKachwaha/sverkos/releases/latest"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
               here
@@ -54,28 +54,28 @@ export default function Landing() {
             .
           </p>
           <p>
-            As mentioned above, Chef&apos;s capabilities are enabled by being built on top of{' '}
+            As mentioned above, Sverkos&apos;s capabilities are enabled by being built on top of{' '}
             <a
-              href="https://convex.dev"
+              href="https://sverkos.ai"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
-              Convex
+              Sverkos
             </a>
             , the open-source reactive database designed to make life easy for web app developers. The
-            &ldquo;magic&rdquo; in Chef is just the fact that it&apos;s using Convex&apos;s APIs, which are an ideal fit
+            &ldquo;magic&rdquo; in Sverkos is just the fact that it&apos;s using Sverkos&apos;s APIs, which are an ideal fit
             for codegen.
           </p>
           <p>
-            Development of the Chef is led by the Convex team. We{' '}
+            Development of the Sverkos is led by the Sverkos team. We{' '}
             <a
-              href="https://github.com/get-convex/chef/blob/main/CONTRIBUTING.md"
+              href="https://github.com/NipunKachwaha/sverkos/blob/main/CONTRIBUTING.md"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
               welcome bug fixes
             </a>{' '}
             and{' '}
             <a
-              href="https://discord.gg/convex"
+              href="https://discord.gg/sverkos"
               className="font-semibold text-bolt-elements-button-primary-backgroundHover hover:underline dark:text-white"
             >
               love receiving feedback
@@ -94,7 +94,7 @@ export default function Landing() {
           </p>
           <div className="flex justify-center">
             <a
-              href="https://github.com/get-convex/chef"
+              href="https://github.com/NipunKachwaha/sverkos"
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-3 bg-neutral-1/50 px-3 py-2 text-lg text-neutral-12 transition-all hover:bg-neutral-1 dark:border-neutral-700 dark:bg-neutral-11 dark:text-neutral-2 dark:hover:bg-neutral-10"
             >
               <svg className="size-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

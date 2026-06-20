@@ -11,7 +11,9 @@ interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>
   href?: string;
   target?: string;
   tip?: string;
+  tipSide?: string; 
   focused?: boolean;
+  inline?: boolean; 
   children?: React.ReactNode;
 }
 
@@ -43,10 +45,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       href,
       target,
       tip,
+      tipSide,
       focused,
       className,
       children,
       disabled,
+      inline, 
       ...props
     },
     ref,
@@ -54,9 +58,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const classes = classNames(
       'inline-flex items-center justify-center rounded-md font-medium transition-colors',
       'disabled:opacity-50 disabled:cursor-not-allowed',
-      variant !== 'unstyled' && variantClasses[variant],
-      variant !== 'unstyled' && sizeClasses[size],
-      focused && 'ring-2 ring-border-selected',
+      variant !== 'unstyled' ? variantClasses[variant] : '',
+      variant !== 'unstyled' ? sizeClasses[size] : '',
+      focused ? 'ring-2 ring-border-selected' : '',
       className,
     );
 

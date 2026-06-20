@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { waitForConvexSessionId } from '../sessionId';
-import { api } from '../../../../convex/_generated/api';
 import type { SerializedMessage } from '../../../../convex/messages';
 import type { Message } from '@ai-sdk/react';
 import { setKnownUrlId } from '../chatId';
@@ -14,6 +13,9 @@ import * as lz4 from 'lz4-wasm';
 import { getConvexSiteUrl } from '../../convexSiteUrl';
 import { subchatIndexStore } from '../subchats';
 import { useStore } from '@nanostores/react';
+
+// Backend API URL fallback
+const PROVISION_HOST = process.env.NEXT_PUBLIC_PROVISION_HOST || '';
 
 export interface InitialMessages {
   loadedChatId: string;
@@ -39,10 +41,29 @@ export function useInitialMessages(chatId: string | undefined):
           setInitialMessages(undefined);
           return;
         }
-        const chatInfo = await convex.query(api.messages.get, {
-          id: chatId,
-          sessionId,
+
+        const token = await getToken();
+
+        // FIX: Replaced convex.query(api.messages.get) with standard REST API fetch
+        const chatInfoResponse = await fetch(`${PROVISION_HOST}/api/messages/get`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({
+            id: chatId,
+            sessionId,
+          }),
         });
+
+        if (!chatInfoResponse.ok) {
+          setInitialMessages(null);
+          return;
+        }
+
+        const chatInfo = await chatInfoResponse.json();
+
         if (chatInfo === null) {
           setInitialMessages(null);
           return;
@@ -90,8 +111,6 @@ export function useInitialMessages(chatId: string | undefined):
 
           const updatedParts = message.parts.map((part) => {
             if (part.type === 'tool-invocation') {
-              // We could potentially handle these better by making the action runner
-              // handle the interrupted calls, but treat these as failed states for now.
               if (part.toolInvocation.state === 'partial-call' || part.toolInvocation.state === 'call') {
                 return {
                   ...part,
@@ -121,12 +140,12 @@ export function useInitialMessages(chatId: string | undefined):
         });
         description.set(chatInfo.description);
       } catch (error) {
-        toast.error('Failed to load chat messages from Convex. Try reloading the page.');
+        toast.error('Failed to load chat messages. Try reloading the page.');
         console.error('Error fetching initial messages:', error);
       }
     };
     void loadInitialMessages();
-  }, [convex, chatId, subchatIndex]);
+  }, [chatId, subchatIndex, getToken]); // FIX: Removed 'convex' from dependencies
 
   return initialMessages;
 }
@@ -148,12 +167,10 @@ function deserializeMessageForConvex(message: SerializedMessage): Message {
 }
 
 async function decompressMessages(compressed: Uint8Array): Promise<SerializedMessage[]> {
-  // Dynamic import only executed on the client
   if (typeof window === 'undefined') {
     throw new Error('decompressSnapshot can only be used in browser environments');
   }
 
-  // Dynamically load the module
   const decompressed = lz4.decompress(compressed);
   const textDecoder = new TextDecoder();
   const deserialized = JSON.parse(textDecoder.decode(decompressed));

@@ -19,7 +19,8 @@ const barlow = Barlow({
 })
 
 export const metadata: Metadata = {
-  title: 'Space — Venture Past Our Sky',
+  title: 'Sverkos | Build AI Apps at the Speed of Thought',
+  description: 'Meet your personal AI software engineer. Turn simple text prompts into fully functional, production-ready full-stack web apps in seconds with Sverkos.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

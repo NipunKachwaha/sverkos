@@ -81,8 +81,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     const { maintenanceMode } = useLaunchDarkly();
 
     const isStreaming = streamStatus === 'streaming' || streamStatus === 'submitted';
-    const recommendedExperience = chooseExperience(navigator.userAgent, window.crossOriginIsolated);
-    const [chatEnabled, setChatEnabled] = useState(recommendedExperience === 'the-real-thing');
+    // FIX: SSR safety ke liye by default chat enabled true set kiya hai
+    const [chatEnabled, setChatEnabled] = useState(true);
     const currentSubchatIndex = useStore(subchatIndexStore) ?? 0;
     const { newChatFeature, minMessagesForNudge } = useLaunchDarkly();
     const shouldShowNudge = newChatFeature && messages.length > minMessagesForNudge;
@@ -106,22 +106,32 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     const isSubchatLoaded = useIsSubchatLoaded();
 
+    // FIX: window aur navigator ko client side par evaluate karne ke liye
     useEffect(() => {
-      const hasDismissedMobileWarning = localStorage.getItem('hasDismissedMobileWarning') === 'true';
-      if (hasDismissedMobileWarning) {
-        setChatEnabled(true);
+      if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+        const recommendedExperience = chooseExperience(navigator.userAgent, window.crossOriginIsolated);
+        const hasDismissedMobileWarning = localStorage.getItem('hasDismissedMobileWarning') === 'true';
+
+        if (recommendedExperience !== 'the-real-thing' && !hasDismissedMobileWarning) {
+          setChatEnabled(false);
+        } else {
+          setChatEnabled(true);
+        }
       }
     }, []);
 
     const chatId = useChatId();
 
-    // ✅ Replaced: getConvexSiteUrl() → window.location.origin
-    const dataForEvals = useMemo(() => {
-      return JSON.stringify({
-        chatId,
-        sessionId,
-        appUrl: typeof window !== 'undefined' ? window.location.origin : '',
-      });
+    const [dataForEvals, setDataForEvals] = useState("");
+
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        setDataForEvals(JSON.stringify({
+          chatId,
+          sessionId,
+          appUrl: window.location.origin,
+        }));
+      }
     }, [chatId, sessionId]);
 
     const handleCreateSubchat = useCallback(async () => {

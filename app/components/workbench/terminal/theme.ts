@@ -1,9 +1,13 @@
 import type { ITheme } from '@xterm/xterm';
 
-const style = getComputedStyle(document.documentElement);
-const cssVar = (token: string) => style.getPropertyValue(token) || undefined;
-
 export function getTerminalTheme(overrides?: ITheme): ITheme {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return { ...overrides };
+  }
+
+  const style = getComputedStyle(document.documentElement);
+  const cssVar = (token: string) => style.getPropertyValue(token) || undefined;
+
   return {
     cursor: cssVar('--bolt-elements-terminal-cursorColor'),
     cursorAccent: cssVar('--bolt-elements-terminal-cursorColorAccent'),

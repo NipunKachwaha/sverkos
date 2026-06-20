@@ -119,10 +119,9 @@ export const MessageInput = memo(function MessageInput({
 
   const input = useStore(messageInputStore);
 
-  // Set the initial input value
-  const [searchParams] = useSearchParams();
+  const searchParams = useSearchParams();
   useEffect(() => {
-    messageInputStore.set(searchParams.get('prefill') || Cookies.get(PROMPT_COOKIE_KEY) || '');
+    messageInputStore.set(searchParams?.get('prefill') || Cookies.get(PROMPT_COOKIE_KEY) || '');
   }, [searchParams]);
 
   // Send messages

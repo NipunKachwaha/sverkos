@@ -129,46 +129,63 @@ export class FilesStore {
   }
 
   async #init() {
-    const webcontainer = await this.#webcontainer;
-    (globalThis as any).webcontainer = webcontainer;
-    webcontainer.internal.watchPaths(
-      { include: [`${WORK_DIR}/**`], exclude: ['**/node_modules', '.git'], includeContent: true },
-      bufferWatchEvents(FILE_EVENTS_DEBOUNCE_MS, this.#processEventBuffer.bind(this)),
-    );
+    try {
+      const webcontainer = await this.#webcontainer;
+      (globalThis as any).webcontainer = webcontainer;
+      if (webcontainer?.internal?.watchPaths) {
+        webcontainer.internal.watchPaths(
+          { include: [`${WORK_DIR}/**`], exclude: ['**/node_modules', '.git'], includeContent: true },
+          bufferWatchEvents(FILE_EVENTS_DEBOUNCE_MS, this.#processEventBuffer.bind(this)),
+        );
+      } else {
+        console.warn('WebContainer internal.watchPaths API is missing. File watching may be disabled.');
+      }
+    } catch (error) {
+      console.error('Failed to initialize WebContainer watcher:', error);
+    }
   }
 
   async prewarmWorkdir(container: WebContainer) {
-    const absFilePaths = await container.internal.fileSearch([] as any, WORK_DIR, {
-      excludes: ['.gitignore', 'node_modules'],
-    });
-    const dirs = new Set<string>();
-    for (const absPath of absFilePaths) {
-      const dir = path.dirname(absPath);
-      const relativePath = path.relative(container.workdir, absPath);
-      if (!relativePath) {
-        continue;
-      }
-      dirs.add(dir);
-    }
-    for (const dir of Array.from(dirs).sort()) {
-      const sanitizedPath = dir.replace(/\/+$/g, '');
-      this.files.setKey(getAbsolutePath(sanitizedPath), { type: 'folder' });
+    if (!container?.internal?.fileSearch) {
+      console.warn('WebContainer internal.fileSearch API is missing. Skipping prewarm.');
+      return;
     }
 
-    const loadFile = async (absPath: string) => {
-      const relativePath = path.relative(container.workdir, absPath);
-      if (!relativePath) {
-        return;
+    try {
+      const absFilePaths = await container.internal.fileSearch([] as any, WORK_DIR, {
+        excludes: ['.gitignore', 'node_modules'],
+      });
+      const dirs = new Set<string>();
+      for (const absPath of absFilePaths) {
+        const dir = path.dirname(absPath);
+        const relativePath = path.relative(container.workdir, absPath);
+        if (!relativePath) {
+          continue;
+        }
+        dirs.add(dir);
       }
-      const buffer = await container.fs.readFile(relativePath);
-      const isBinary = isBinaryFile(buffer);
-      let content = '';
-      if (!isBinary) {
-        content = this.#decodeFileContent(buffer);
+      for (const dir of Array.from(dirs).sort()) {
+        const sanitizedPath = dir.replace(/\/+$/g, '');
+        this.files.setKey(getAbsolutePath(sanitizedPath), { type: 'folder' });
       }
-      this.files.setKey(getAbsolutePath(absPath), { type: 'file', content, isBinary });
-    };
-    await Promise.all(absFilePaths.map(loadFile));
+
+      const loadFile = async (absPath: string) => {
+        const relativePath = path.relative(container.workdir, absPath);
+        if (!relativePath) {
+          return;
+        }
+        const buffer = await container.fs.readFile(relativePath);
+        const isBinary = isBinaryFile(buffer);
+        let content = '';
+        if (!isBinary) {
+          content = this.#decodeFileContent(buffer);
+        }
+        this.files.setKey(getAbsolutePath(absPath), { type: 'file', content, isBinary });
+      };
+      await Promise.all(absFilePaths.map(loadFile));
+    } catch (error) {
+      console.error('Failed during prewarmWorkdir:', error);
+    }
   }
 
   #processEventBuffer(events: Array<[events: PathWatcherEvent[]]>) {

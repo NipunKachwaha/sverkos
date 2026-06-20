@@ -2,15 +2,19 @@ import { memo } from 'react';
 import { classNames } from '../../utils/classNames';
 
 interface KeyboardShortcutProps {
-  /** Array of keys to display, e.g., ['⌘', 'K'] or ['Ctrl', 'Shift', 'P'] */
-  keys: string[];
+  keys?: string[];
+  value?: string[]; 
   className?: string;
 }
 
-export const KeyboardShortcut = memo(({ keys, className }: KeyboardShortcutProps) => {
+export const KeyboardShortcut = memo(({ keys, value, className }: KeyboardShortcutProps) => {
+  const shortcutKeys = keys || value || [];
+
+  if (shortcutKeys.length === 0) return null;
+
   return (
     <div className={classNames('flex items-center gap-1', className)}>
-      {keys.map((key, index) => (
+      {shortcutKeys.map((key, index) => (
         <kbd
           key={index}
           className={classNames(

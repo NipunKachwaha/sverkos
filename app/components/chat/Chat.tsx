@@ -1,47 +1,59 @@
-'use client';
+"use client";
 
-import { useStore } from '@nanostores/react';
-import type { Message, UIMessage } from 'ai';
-import { useChat } from '@ai-sdk/react';
-import { useAnimate } from 'framer-motion';
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useMessageParser, type PartCache } from '../../lib/hooks/useMessageParser';
-import { useSnapScroll } from '../../lib/hooks/useSnapScroll';
-import { description } from '../../lib/stores/description';
-import { chatStore } from '../../lib/stores/chatId';
-import { workbenchStore } from '../../lib/stores/workbench.client';
-import { MAX_CONSECUTIVE_DEPLOY_ERRORS, type ModelSelection } from '../../utils/constants';
-import { cubicEasingFn } from '../../utils/easings';
-import { createScopedLogger } from '../../../lib/agent/utils/logger';
-import { BaseChat } from './BaseChat.client';
-import { createSampler } from '../../utils/sampler';
-import { filesToArtifacts } from '../../utils/fileUtils';
-import { ChatContextManager } from '../../../lib/agent/ChatContextManager';
-import { toast } from 'sonner';
-import type { PartId } from '../../lib/stores/artifacts';
-import { captureException, captureMessage } from '@sentry/nextjs';
-import type { ActionStatus } from '../../lib/runtime/action-runner';
-import { chatIdStore, initialIdStore } from '../../lib/stores/chatId';
-import { formatDistanceStrict } from 'date-fns';
-import { atom } from 'nanostores';
-import { STATUS_MESSAGES } from './StreamingIndicator';
-import { IconButton as Button } from '../ui/IconButton';
-import { ClipboardIcon, ExternalLinkIcon } from '@radix-ui/react-icons';
-import type { ProviderType } from '../../lib/common/annotations';
-import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
-import { MissingApiKey } from './MissingApiKey';
-import { models, type ModelProvider } from './ModelSelector';
-import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
-import { useLocalStorage } from '@uidotdev/usehooks';
-import { KeyIcon } from '@heroicons/react/24/outline';
-import { UsageDebugView } from '../debug/UsageDebugView';
-import { useUsage } from '../../lib/stores/usage';
-import { hasAnyApiKeySet, hasApiKeySet } from '../../lib/common/apiKey';
-import { chatSyncState } from '../../lib/stores/startup/chatSyncState';
-// ✅ Replaced: useConvex, useConvexAuth, convex api → Clerk
-import { useAuth } from '@clerk/nextjs';
+import { useStore } from "@nanostores/react";
+import type { Message, UIMessage } from "ai";
+import { useChat } from "@ai-sdk/react";
+import { useAnimate } from "framer-motion";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  useMessageParser,
+  type PartCache,
+} from "../../lib/hooks/useMessageParser";
+import { useSnapScroll } from "../../lib/hooks/useSnapScroll";
+import { description } from "../../lib/stores/description";
+import { chatStore } from "../../lib/stores/chatId";
+import { workbenchStore } from "../../lib/stores/workbench.client";
+import {
+  MAX_CONSECUTIVE_DEPLOY_ERRORS,
+  type ModelSelection,
+} from "../../utils/constants";
+import { cubicEasingFn } from "../../utils/easings";
+import { createScopedLogger } from "../../../lib/agent/utils/logger";
+import { BaseChat } from "./BaseChat.client";
+import { createSampler } from "../../utils/sampler";
+import { filesToArtifacts } from "../../utils/fileUtils";
+import { ChatContextManager } from "../../../lib/agent/ChatContextManager";
+import { toast } from "sonner";
+import type { PartId } from "../../lib/stores/artifacts";
+import { captureException, captureMessage } from "@sentry/nextjs";
+import type { ActionStatus } from "../../lib/runtime/action-runner";
+import { chatIdStore, initialIdStore } from "../../lib/stores/chatId";
+import { formatDistanceStrict } from "date-fns";
+import { atom } from "nanostores";
+import { STATUS_MESSAGES } from "./StreamingIndicator";
+import { IconButton as Button } from "../ui/IconButton";
+import { ClipboardIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
+import type { ProviderType } from "../../lib/common/annotations";
+import { setChefDebugProperty } from "../../../lib/agent/utils/chefDebug";
+import { MissingApiKey } from "./MissingApiKey";
+import { models, type ModelProvider } from "./ModelSelector";
+import { useLaunchDarkly } from "../../lib/hooks/useLaunchDarkly";
+import { KeyIcon } from "@heroicons/react/24/outline";
+import { UsageDebugView } from "../debug/UsageDebugView";
+import { useUsage } from "../../lib/stores/usage";
+import { hasAnyApiKeySet, hasApiKeySet } from "../../lib/common/apiKey";
+import { chatSyncState } from "../../lib/stores/startup/chatSyncState";
+import { useAuth } from "@clerk/nextjs";
 
-const logger = createScopedLogger('Chat');
+const logger = createScopedLogger("Chat");
 
 const MAX_RETRIES = 4;
 
@@ -50,17 +62,25 @@ const processSampledMessages = createSampler(
     messages: Message[];
     initialMessages: Message[];
     parseMessages: (messages: Message[]) => void;
-    streamStatus: 'streaming' | 'submitted' | 'ready' | 'error';
+    streamStatus: "streaming" | "submitted" | "ready" | "error";
     storeMessageHistory: (
       messages: Message[],
-      streamStatus: 'streaming' | 'submitted' | 'ready' | 'error',
+      streamStatus: "streaming" | "submitted" | "ready" | "error",
     ) => Promise<void>;
   }) => {
-    const { messages, initialMessages, parseMessages, storeMessageHistory, streamStatus } = options;
+    const {
+      messages,
+      initialMessages,
+      parseMessages,
+      storeMessageHistory,
+      streamStatus,
+    } = options;
     parseMessages(messages);
 
     if (messages.length >= initialMessages.length) {
-      storeMessageHistory(messages, streamStatus).catch((error) => toast.error(error.message));
+      storeMessageHistory(messages, streamStatus).catch((error) =>
+        toast.error(error.message),
+      );
     }
   },
   50,
@@ -71,13 +91,17 @@ interface ChatProps {
   partCache: PartCache;
   storeMessageHistory: (
     messages: Message[],
-    streamStatus: 'streaming' | 'submitted' | 'ready' | 'error',
+    streamStatus: "streaming" | "submitted" | "ready" | "error",
   ) => Promise<void>;
   initializeChat: () => Promise<boolean>;
   description?: string;
   isReload: boolean;
   hadSuccessfulDeploy: boolean;
-  subchats?: { subchatIndex: number; updatedAt: number; description?: string }[];
+  subchats?: {
+    subchatIndex: number;
+    updatedAt: number;
+    description?: string;
+  }[];
 }
 
 const retryState = atom({
@@ -98,7 +122,9 @@ export const Chat = memo(
     // ✅ Replaced: useConvex() + useConvexSessionIdOrNullOrLoading() → Clerk
     const { userId: sessionId, getToken } = useAuth();
 
-    const [chatStarted, setChatStarted] = useState(initialMessages.length > 0 || (!!subchats && subchats.length > 1));
+    const [chatStarted, setChatStarted] = useState(
+      initialMessages.length > 0 || (!!subchats && subchats.length > 1),
+    );
     const actionAlert = useStore(workbenchStore.alert);
     const syncState = useStore(chatSyncState);
 
@@ -112,28 +138,31 @@ export const Chat = memo(
     } | null>(null);
 
     useEffect(() => {
-      fetch('/api/api-keys/current')
+      fetch("/api/api-keys/current")
         .then((res) => res.json())
         .then((data) => setApiKey(data))
         .catch(() => setApiKey(null));
     }, []);
 
     // ✅ Replaced: convex.mutation(api.messages.rewindChat) → fetch
-    const rewindToMessage = async (subchatIndex?: number, messageIndex?: number) => {
-      if (sessionId && typeof sessionId === 'string') {
+    const rewindToMessage = async (
+      subchatIndex?: number,
+      messageIndex?: number,
+    ) => {
+      if (sessionId && typeof sessionId === "string") {
         const chatId = chatIdStore.get();
         if (!chatId) return;
         if (subchatIndex === undefined) return;
 
         const url = new URL(window.location.href);
-        url.searchParams.set('rewind', 'true');
+        url.searchParams.set("rewind", "true");
 
         try {
           const token = await getToken();
-          await fetch('/api/messages/rewind', {
-            method: 'POST',
+          await fetch("/api/messages/rewind", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
@@ -145,8 +174,8 @@ export const Chat = memo(
           });
           window.location.replace(url.href);
         } catch (error) {
-          console.error('Failed to rewind chat:', error);
-          toast.error('Failed to rewind chat');
+          console.error("Failed to rewind chat:", error);
+          toast.error("Failed to rewind chat");
         }
       }
     };
@@ -164,21 +193,44 @@ export const Chat = memo(
     const title = useStore(description);
     const { showChat } = useStore(chatStore);
     const [animationScope, animate] = useAnimate();
-    const [modelSelection, setModelSelection] = useLocalStorage<ModelSelection>('modelSelection', 'auto');
+    const [modelSelection, setModelSelectionState] =
+      useState<ModelSelection>("auto");
+
+    useEffect(() => {
+      const timeoutId = setTimeout(() => {
+        if (typeof window !== "undefined") {
+          const stored = window.localStorage.getItem("modelSelection");
+          if (stored) {
+            const cleanValue = stored.replace(/^"|"$/g, "") as ModelSelection;
+            setModelSelectionState(cleanValue);
+          }
+        }
+      }, 0);
+
+      return () => clearTimeout(timeoutId);
+    }, []);
+
+    const setModelSelection = useCallback((value: ModelSelection) => {
+      setModelSelectionState(value);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("modelSelection", `"${value}"`);
+      }
+    }, []);
 
     const terminalInitializationOptions = useMemo(
       () => ({
         isReload,
-        shouldDeployOnInit: hadSuccessfulDeploy || (!!subchats && subchats.length > 1),
+        shouldDeployOnInit:
+          hadSuccessfulDeploy || (!!subchats && subchats.length > 1),
       }),
       [isReload, hadSuccessfulDeploy, subchats],
     );
 
     useEffect(() => {
       const url = new URL(window.location.href);
-      if (url.searchParams.get('rewind') === 'true') {
+      if (url.searchParams.get("rewind") === "true") {
         // ✅ Replaced: removed Convex-specific message
-        toast.info('Successfully reverted changes.');
+        toast.info("Successfully reverted changes.");
       }
     }, []);
 
@@ -199,30 +251,52 @@ export const Chat = memo(
     );
 
     const checkApiKeyForCurrentModel = useCallback(
-      (model: ModelSelection): { hasMissingKey: boolean; provider?: ModelProvider; requireKey: boolean } => {
+      (
+        model: ModelSelection,
+      ): {
+        hasMissingKey: boolean;
+        provider?: ModelProvider;
+        requireKey: boolean;
+      } => {
         const requireKey = models[model]?.requireKey || false;
-        if (apiKey?.preference !== 'always' && !requireKey) {
+        if (apiKey?.preference !== "always" && !requireKey) {
           return { hasMissingKey: false, requireKey: false };
         }
 
         const MODEL_TO_PROVIDER_MAP: {
-          [K in ModelSelection]: { providerName: ModelProvider; apiKeyField: 'value' | 'openai' | 'xai' | 'google' };
+          [K in ModelSelection]: {
+            providerName: ModelProvider;
+            apiKeyField: "value" | "openai" | "xai" | "google";
+          };
         } = {
-          auto: { providerName: 'anthropic', apiKeyField: 'value' },
-          'claude-4.6-sonnet': { providerName: 'anthropic', apiKeyField: 'value' },
-          'claude-4.5-sonnet': { providerName: 'anthropic', apiKeyField: 'value' },
-          'gpt-4.1': { providerName: 'openai', apiKeyField: 'openai' },
-          'gpt-5': { providerName: 'openai', apiKeyField: 'openai' },
-          'grok-3-mini': { providerName: 'xai', apiKeyField: 'xai' },
-          'gemini-2.5-pro': { providerName: 'google', apiKeyField: 'google' },
-          'claude-3-5-haiku': { providerName: 'anthropic', apiKeyField: 'value' },
-          'gpt-4.1-mini': { providerName: 'openai', apiKeyField: 'openai' },
+          auto: { providerName: "anthropic", apiKeyField: "value" },
+          "claude-4.6-sonnet": {
+            providerName: "anthropic",
+            apiKeyField: "value",
+          },
+          "claude-4.5-sonnet": {
+            providerName: "anthropic",
+            apiKeyField: "value",
+          },
+          "gpt-4.1": { providerName: "openai", apiKeyField: "openai" },
+          "gpt-5": { providerName: "openai", apiKeyField: "openai" },
+          "grok-3-mini": { providerName: "xai", apiKeyField: "xai" },
+          "gemini-2.5-pro": { providerName: "google", apiKeyField: "google" },
+          "claude-3-5-haiku": {
+            providerName: "anthropic",
+            apiKeyField: "value",
+          },
+          "gpt-4.1-mini": { providerName: "openai", apiKeyField: "openai" },
         };
 
         const providerInfo = MODEL_TO_PROVIDER_MAP[model];
         const keyValue = apiKey?.[providerInfo.apiKeyField];
-        if (!keyValue || keyValue.trim() === '') {
-          return { hasMissingKey: true, provider: providerInfo.providerName, requireKey };
+        if (!keyValue || keyValue.trim() === "") {
+          return {
+            hasMissingKey: true,
+            provider: providerInfo.providerName,
+            requireKey,
+          };
         }
         return { hasMissingKey: false, requireKey };
       },
@@ -230,21 +304,29 @@ export const Chat = memo(
     );
 
     const [_disableChatMessage, setDisableChatMessage] = useState<
-      | { type: 'ExceededQuota' }
-      | { type: 'TeamDisabled'; isPaidPlan: boolean }
-      | { type: 'MissingApiKey'; provider: ModelProvider; requireKey: boolean }
+      | { type: "ExceededQuota" }
+      | { type: "TeamDisabled"; isPaidPlan: boolean }
+      | { type: "MissingApiKey"; provider: ModelProvider; requireKey: boolean }
       | null
     >(null);
 
     // ✅ Replaced: useSelectedTeamSlug() → null (no team concept in your app)
     const usage = useUsage({ teamSlug: null });
-    const forceDisable = usage && !usage.isLoadingUsage && !usage.isPaidPlan && usage.usagePercentage > 200;
-    const disableChatMessage = forceDisable ? { type: 'ExceededQuota' as const } : _disableChatMessage;
+    const forceDisable =
+      usage &&
+      !usage.isLoadingUsage &&
+      !usage.isPaidPlan &&
+      usage.usagePercentage > 200;
+    const disableChatMessage = forceDisable
+      ? { type: "ExceededQuota" as const }
+      : _disableChatMessage;
 
     const [sendMessageInProgress, setSendMessageInProgress] = useState(false);
 
     const anthropicProviders: ProviderType[] =
-      Math.random() < useAnthropicFraction ? ['Anthropic', 'Bedrock'] : ['Bedrock', 'Anthropic'];
+      Math.random() < useAnthropicFraction
+        ? ["Anthropic", "Bedrock"]
+        : ["Bedrock", "Anthropic"];
 
     // ✅ Replaced: getConvexAuthToken(convex) + getTokenUsage() → Clerk getToken + fetch
     const checkTokenUsage = useCallback(async () => {
@@ -256,31 +338,46 @@ export const Chat = memo(
       try {
         const token = await getToken();
         if (!token) {
-          console.error('No auth token');
+          console.error("No auth token");
           return;
         }
 
-        const res = await fetch('/api/usage/tokens', {
+        const res = await fetch("/api/usage/tokens", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) {
-          console.error('Failed to check token usage', res.status);
+          console.error("Failed to check token usage", res.status);
           return;
         }
 
         const tokenUsage = await res.json();
 
-        if (tokenUsage.status === 'error') {
-          console.error('Failed to check for token usage', tokenUsage.httpStatus, tokenUsage.httpBody);
+        if (tokenUsage.status === "error") {
+          console.error(
+            "Failed to check for token usage",
+            tokenUsage.httpStatus,
+            tokenUsage.httpBody,
+          );
         } else {
-          const { centitokensUsed, centitokensQuota, isTeamDisabled, isPaidPlan } = tokenUsage;
+          const {
+            centitokensUsed,
+            centitokensQuota,
+            isTeamDisabled,
+            isPaidPlan,
+          } = tokenUsage;
           if (centitokensUsed !== undefined && centitokensQuota !== undefined) {
-            console.log(`Tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`);
+            console.log(
+              `Tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`,
+            );
             if (isTeamDisabled) {
-              setDisableChatMessage({ type: 'TeamDisabled', isPaidPlan });
-            } else if (!isPaidPlan && centitokensUsed > centitokensQuota && !hasAnyApiKeySet(apiKey)) {
-              setDisableChatMessage({ type: 'ExceededQuota' });
+              setDisableChatMessage({ type: "TeamDisabled", isPaidPlan });
+            } else if (
+              !isPaidPlan &&
+              centitokensUsed > centitokensQuota &&
+              !hasAnyApiKeySet(apiKey)
+            ) {
+              setDisableChatMessage({ type: "ExceededQuota" });
             } else {
               setDisableChatMessage(null);
             }
@@ -289,145 +386,173 @@ export const Chat = memo(
       } catch (error) {
         captureException(error);
       }
-    }, [apiKey, getToken, modelSelection, setDisableChatMessage, useGeminiAuto]);
+    }, [
+      apiKey,
+      getToken,
+      modelSelection,
+      setDisableChatMessage,
+      useGeminiAuto,
+    ]);
 
-    const { messages, status, stop, append, setMessages, reload, error } = useChat({
-      initialMessages,
-      api: '/api/chat',
-      sendExtraMessageFields: true,
-      experimental_prepareRequestBody: async ({ messages }) => {
-        const chatInitialId = initialIdStore.get();
+    const { messages, status, stop, append, setMessages, reload, error } =
+      useChat({
+        initialMessages,
+        api: "/api/chat",
+        sendExtraMessageFields: true,
+        experimental_prepareRequestBody: async ({ messages }) => {
+          const chatInitialId = initialIdStore.get();
 
-        // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken
-        const token = await getToken();
-        if (!token) {
-          throw new Error('No auth token');
-        }
+          // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken
+          const token = await getToken();
+          if (!token) {
+            throw new Error("No auth token");
+          }
 
-        let modelProvider: ProviderType;
-        const retries = retryState.get();
-        let modelChoice: string | undefined = undefined;
+          let modelProvider: ProviderType;
+          const retries = retryState.get();
+          let modelChoice: string | undefined = undefined;
 
-        if (modelSelection === 'auto') {
-          const providers: ProviderType[] = anthropicProviders;
-          modelProvider = providers[retries.numFailures % providers.length];
-          modelChoice = 'claude-sonnet-4-6';
-        } else if (modelSelection === 'claude-3-5-haiku') {
-          modelProvider = 'Anthropic';
-          modelChoice = 'claude-3-5-haiku-latest';
-        } else if (modelSelection === 'claude-4.6-sonnet') {
-          const providers: ProviderType[] = anthropicProviders;
-          modelProvider = providers[retries.numFailures % providers.length];
-          modelChoice = 'claude-sonnet-4-6';
-        } else if (modelSelection === 'claude-4.5-sonnet') {
-          const providers: ProviderType[] = anthropicProviders;
-          modelProvider = providers[retries.numFailures % providers.length];
-          modelChoice = 'claude-sonnet-4-5';
-        } else if (modelSelection === 'grok-3-mini') {
-          modelProvider = 'XAI';
-        } else if (modelSelection === 'gemini-2.5-pro') {
-          modelProvider = 'Google';
-        } else if (modelSelection === 'gpt-4.1-mini') {
-          modelProvider = 'OpenAI';
-          modelChoice = 'gpt-4.1-mini';
-        } else if (modelSelection === 'gpt-4.1') {
-          modelProvider = 'OpenAI';
-        } else if (modelSelection === 'gpt-5') {
-          modelProvider = 'OpenAI';
-          modelChoice = 'gpt-5';
-        } else {
-          const _exhaustiveCheck: never = modelSelection;
-          throw new Error(`Unknown model: ${_exhaustiveCheck}`);
-        }
+          if (modelSelection === "auto") {
+            const providers: ProviderType[] = anthropicProviders;
+            modelProvider = providers[retries.numFailures % providers.length];
+            modelChoice = "claude-sonnet-4-6";
+          } else if (modelSelection === "claude-3-5-haiku") {
+            modelProvider = "Anthropic";
+            modelChoice = "claude-3-5-haiku-latest";
+          } else if (modelSelection === "claude-4.6-sonnet") {
+            const providers: ProviderType[] = anthropicProviders;
+            modelProvider = providers[retries.numFailures % providers.length];
+            modelChoice = "claude-sonnet-4-6";
+          } else if (modelSelection === "claude-4.5-sonnet") {
+            const providers: ProviderType[] = anthropicProviders;
+            modelProvider = providers[retries.numFailures % providers.length];
+            modelChoice = "claude-sonnet-4-5";
+          } else if (modelSelection === "grok-3-mini") {
+            modelProvider = "XAI";
+          } else if (modelSelection === "gemini-2.5-pro") {
+            modelProvider = "Google";
+          } else if (modelSelection === "gpt-4.1-mini") {
+            modelProvider = "OpenAI";
+            modelChoice = "gpt-4.1-mini";
+          } else if (modelSelection === "gpt-4.1") {
+            modelProvider = "OpenAI";
+          } else if (modelSelection === "gpt-5") {
+            modelProvider = "OpenAI";
+            modelChoice = "gpt-5";
+          } else {
+            const _exhaustiveCheck: never = modelSelection;
+            throw new Error(`Unknown model: ${_exhaustiveCheck}`);
+          }
 
-        let shouldDisableTools = false;
-        if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
-          const lastSystemMessage = messages[messages.length - 1];
-          const toolCalls = lastSystemMessage.parts.filter(
-            (part) => part.type === 'tool-invocation' && part.toolInvocation.state === 'result',
-          );
-          if (toolCalls.length >= MAX_CONSECUTIVE_DEPLOY_ERRORS) {
-            const lastToolCalls = toolCalls.slice(-MAX_CONSECUTIVE_DEPLOY_ERRORS);
-            const allFailed = lastToolCalls.every(
-              (t) =>
-                t.type === 'tool-invocation' &&
-                t.toolInvocation.state === 'result' &&
-                t.toolInvocation.result.startsWith('Error:'),
+          let shouldDisableTools = false;
+          if (
+            messages.length > 0 &&
+            messages[messages.length - 1].role === "assistant"
+          ) {
+            const lastSystemMessage = messages[messages.length - 1];
+            const toolCalls = lastSystemMessage.parts.filter(
+              (part) =>
+                part.type === "tool-invocation" &&
+                part.toolInvocation.state === "result",
             );
-            if (allFailed) {
-              shouldDisableTools = true;
+            if (toolCalls.length >= MAX_CONSECUTIVE_DEPLOY_ERRORS) {
+              const lastToolCalls = toolCalls.slice(
+                -MAX_CONSECUTIVE_DEPLOY_ERRORS,
+              );
+              const allFailed = lastToolCalls.every(
+                (t) =>
+                  t.type === "tool-invocation" &&
+                  t.toolInvocation.state === "result" &&
+                  t.toolInvocation.result.startsWith("Error:"),
+              );
+              if (allFailed) {
+                shouldDisableTools = true;
+              }
             }
           }
-        }
 
-        const { messages: preparedMessages, collapsedMessages } = chatContextManager.current.prepareContext(
-          messages,
-          maxSizeForModel(modelSelection, maxCollapsedMessagesSize),
-          minCollapsedMessagesSize,
-        );
+          const { messages: preparedMessages, collapsedMessages } =
+            chatContextManager.current.prepareContext(
+              messages,
+              maxSizeForModel(modelSelection, maxCollapsedMessagesSize),
+              minCollapsedMessagesSize,
+            );
 
-        const characterCounts = chatContextManager.current.calculatePromptCharacterCounts(preparedMessages);
+          const characterCounts =
+            chatContextManager.current.calculatePromptCharacterCounts(
+              preparedMessages,
+            );
 
-        return {
-          messages: preparedMessages,
-          firstUserMessage: messages.filter((message) => message.role == 'user').length == 1,
-          chatInitialId,
-          token,
-          // ✅ Removed: teamSlug, deploymentName (Convex specific)
-          modelProvider,
-          userApiKey: retries.numFailures < MAX_RETRIES ? apiKey : { ...apiKey, preference: 'always' },
-          shouldDisableTools,
-          recordRawPromptsForDebugging,
-          modelChoice,
-          collapsedMessages,
-          promptCharacterCounts: characterCounts,
-          featureFlags: {
-            enableResend,
-          },
-        };
-      },
-      maxSteps: 64,
-      async onToolCall({ toolCall }) {
-        console.log('Starting tool call', toolCall);
-        const { result } = await workbenchStore.waitOnToolCall(toolCall.toolCallId);
-        console.log('Tool call finished', result);
-        return result;
-      },
-      onError: async (e: Error) => {
-        captureMessage('Failed to process chat request: ' + e.message, {
-          level: 'error',
-          extra: {
-            error: e,
-            userHasOwnApiKey: !!apiKey,
-          },
-        });
+          return {
+            messages: preparedMessages,
+            firstUserMessage:
+              messages.filter((message) => message.role == "user").length == 1,
+            chatInitialId,
+            token,
+            // ✅ Removed: teamSlug, deploymentName (Convex specific)
+            modelProvider,
+            userApiKey:
+              retries.numFailures < MAX_RETRIES
+                ? apiKey
+                : { ...apiKey, preference: "always" },
+            shouldDisableTools,
+            recordRawPromptsForDebugging,
+            modelChoice,
+            collapsedMessages,
+            promptCharacterCounts: characterCounts,
+            featureFlags: {
+              enableResend,
+            },
+          };
+        },
+        maxSteps: 64,
+        async onToolCall({ toolCall }) {
+          console.log("Starting tool call", toolCall);
+          const { result } = await workbenchStore.waitOnToolCall(
+            toolCall.toolCallId,
+          );
+          console.log("Tool call finished", result);
+          return result;
+        },
+        onError: async (e: Error) => {
+          captureMessage("Failed to process chat request: " + e.message, {
+            level: "error",
+            extra: {
+              error: e,
+              userHasOwnApiKey: !!apiKey,
+            },
+          });
 
-        const retries = retryState.get();
-        logger.error(`Request failed (retries: ${JSON.stringify(retries)})`, e, error);
+          const retries = retryState.get();
+          logger.error(
+            `Request failed (retries: ${JSON.stringify(retries)})`,
+            e,
+            error,
+          );
 
-        const backoff = error?.message.includes(STATUS_MESSAGES.error)
-          ? exponentialBackoff(retries.numFailures + 1)
-          : 0;
-        retryState.set({
-          numFailures: retries.numFailures + 1,
-          nextRetry: Date.now() + backoff,
-        });
+          const backoff = error?.message.includes(STATUS_MESSAGES.error)
+            ? exponentialBackoff(retries.numFailures + 1)
+            : 0;
+          retryState.set({
+            numFailures: retries.numFailures + 1,
+            nextRetry: Date.now() + backoff,
+          });
 
-        workbenchStore.abortAllActions();
-        await checkTokenUsage();
-      },
-      onFinish: async (message, response) => {
-        const usage = response.usage;
-        if (usage) {
-          console.debug('Token usage in response:', usage);
-        }
-        if (response.finishReason == 'stop') {
-          retryState.set({ numFailures: 0, nextRetry: Date.now() });
-        }
-        logger.debug('Finished streaming');
-        await checkTokenUsage();
-      },
-    });
+          workbenchStore.abortAllActions();
+          await checkTokenUsage();
+        },
+        onFinish: async (message, response) => {
+          const usage = response.usage;
+          if (usage) {
+            console.debug("Token usage in response:", usage);
+          }
+          if (response.finishReason == "stop") {
+            retryState.set({ numFailures: 0, nextRetry: Date.now() });
+          }
+          logger.debug("Finished streaming");
+          await checkTokenUsage();
+        },
+      });
 
     useEffect(() => {
       setMessages(initialMessages);
@@ -435,14 +560,17 @@ export const Chat = memo(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [setMessages, syncState.subchatIndex]);
 
-    setChefDebugProperty('messages', messages);
+    setChefDebugProperty("messages", messages);
 
     const { parsedMessages, parseMessages } = useMessageParser(partCache);
 
-    setChefDebugProperty('parsedMessages', parsedMessages);
+    setChefDebugProperty("parsedMessages", parsedMessages);
 
     useEffect(() => {
-      chatStore.setKey('started', messages.length > 0 || (!!subchats && subchats.length > 1));
+      chatStore.setKey(
+        "started",
+        messages.length > 0 || (!!subchats && subchats.length > 1),
+      );
     }, [messages.length, subchats]);
 
     useEffect(() => {
@@ -457,7 +585,7 @@ export const Chat = memo(
 
     const abort = () => {
       stop();
-      chatStore.setKey('aborted', true);
+      chatStore.setKey("aborted", true);
       workbenchStore.abortAllActions();
     };
 
@@ -467,12 +595,20 @@ export const Chat = memo(
       if (chatStarted) return;
 
       await Promise.all([
-        animate('#suggestions', { opacity: 0, display: 'none' }, { duration: 0.1 }),
-        animate('#intro', { opacity: 0, flex: 1 }, { duration: 0.2, ease: cubicEasingFn }),
-        animate('#footer', { opacity: 0, display: 'none' }, { duration: 0.2 }),
+        animate(
+          "#suggestions",
+          { opacity: 0, display: "none" },
+          { duration: 0.1 },
+        ),
+        animate(
+          "#intro",
+          { opacity: 0, flex: 1 },
+          { duration: 0.2, ease: cubicEasingFn },
+        ),
+        animate("#footer", { opacity: 0, display: "none" }, { duration: 0.2 }),
       ]);
 
-      chatStore.setKey('started', true);
+      chatStore.setKey("started", true);
       setChatStarted(true);
     };
 
@@ -483,13 +619,12 @@ export const Chat = memo(
         (retries.numFailures >= MAX_RETRIES || now < retries.nextRetry) &&
         !hasApiKeySet(modelSelection, useGeminiAuto, apiKey)
       ) {
-        let message: string | ReactNode = 'Too busy right now. ';
+        let message: string | ReactNode = "Too busy right now. ";
         if (retries.numFailures >= MAX_RETRIES) {
           message = (
             <>
               {message}
-              Please{' '}
-              {/* ✅ Replaced: chef.convex.dev → /settings */}
+              Please {/* ✅ Replaced: chef.convex.dev → /settings */}
               <a href="/settings" className="text-content-link hover:underline">
                 enter your own API key
               </a>
@@ -501,7 +636,7 @@ export const Chat = memo(
           message = (
             <>
               {message}
-              Please try again in {remaining} or{' '}
+              Please try again in {remaining} or{" "}
               <a href="/settings" className="text-content-link hover:underline">
                 enter your own API key
               </a>
@@ -510,18 +645,18 @@ export const Chat = memo(
           );
         }
         toast.error(message);
-        captureMessage('User tried to send message but server is too busy');
+        captureMessage("User tried to send message but server is too busy");
         return;
       }
 
-      if (status === 'streaming' || status === 'submitted') {
-        console.log('Aborting current message.');
+      if (status === "streaming" || status === "submitted") {
+        console.log("Aborting current message.");
         abort();
         return;
       }
 
       if (sendMessageInProgress) {
-        console.log('sendMessage already in progress, returning.');
+        console.log("sendMessage already in progress, returning.");
         return;
       }
 
@@ -534,21 +669,26 @@ export const Chat = memo(
 
         runAnimation();
 
-        const shouldSendRelevantFiles = chatContextManager.current.shouldSendRelevantFiles(
-          messages,
-          maxSizeForModel(modelSelection, maxCollapsedMessagesSize),
-        );
+        const shouldSendRelevantFiles =
+          chatContextManager.current.shouldSendRelevantFiles(
+            messages,
+            maxSizeForModel(modelSelection, maxCollapsedMessagesSize),
+          );
         const maybeRelevantFilesMessage: UIMessage = shouldSendRelevantFiles
-          ? chatContextManager.current.relevantFiles(messages, `${Date.now()}`, maxRelevantFilesSize)
+          ? chatContextManager.current.relevantFiles(
+              messages,
+              `${Date.now()}`,
+              maxRelevantFilesSize,
+            )
           : {
               id: `${Date.now()}`,
-              content: '',
-              role: 'user',
+              content: "",
+              role: "user",
               parts: [],
             };
 
         const newMessage = structuredClone(maybeRelevantFilesMessage);
-        newMessage.parts.push({ type: 'text', text: messageInput });
+        newMessage.parts.push({ type: "text", text: messageInput });
         newMessage.content = messageInput;
 
         if (!chatStarted) {
@@ -558,14 +698,23 @@ export const Chat = memo(
         }
 
         const modifiedFiles = workbenchStore.getModifiedFiles();
-        chatStore.setKey('aborted', false);
+        chatStore.setKey("aborted", false);
         if (modifiedFiles !== undefined) {
-          const userUpdateArtifact = filesToArtifacts(modifiedFiles, `${Date.now()}`);
-          maybeRelevantFilesMessage.parts.push({ type: 'text', text: userUpdateArtifact });
+          const userUpdateArtifact = filesToArtifacts(
+            modifiedFiles,
+            `${Date.now()}`,
+          );
+          maybeRelevantFilesMessage.parts.push({
+            type: "text",
+            text: userUpdateArtifact,
+          });
           workbenchStore.resetAllFileModifications();
         }
         maybeRelevantFilesMessage.content = messageInput;
-        maybeRelevantFilesMessage.parts.push({ type: 'text', text: messageInput });
+        maybeRelevantFilesMessage.parts.push({
+          type: "text",
+          text: messageInput,
+        });
         append(maybeRelevantFilesMessage);
       } finally {
         setSendMessageInProgress(false);
@@ -583,17 +732,31 @@ export const Chat = memo(
           return;
         }
 
-        const { hasMissingKey, provider, requireKey } = checkApiKeyForCurrentModel(newModel);
+        const { hasMissingKey, provider, requireKey } =
+          checkApiKeyForCurrentModel(newModel);
 
         if (hasMissingKey && provider) {
-          setDisableChatMessage({ type: 'MissingApiKey', provider, requireKey });
+          setDisableChatMessage({
+            type: "MissingApiKey",
+            provider,
+            requireKey,
+          });
         } else {
           await checkTokenUsage().catch((error) => {
-            console.error('Error checking token usage after model change:', error);
+            console.error(
+              "Error checking token usage after model change:",
+              error,
+            );
           });
         }
       },
-      [apiKey, checkApiKeyForCurrentModel, checkTokenUsage, setModelSelection, useGeminiAuto],
+      [
+        apiKey,
+        checkApiKeyForCurrentModel,
+        checkTokenUsage,
+        setModelSelection,
+        useGeminiAuto,
+      ],
     );
 
     return (
@@ -615,14 +778,16 @@ export const Chat = memo(
           clearAlert={() => workbenchStore.clearAlert()}
           terminalInitializationOptions={terminalInitializationOptions}
           disableChatMessage={
-            disableChatMessage?.type === 'ExceededQuota' ? (
-              <NoTokensText resetDisableChatMessage={() => setDisableChatMessage(null)} />
-            ) : disableChatMessage?.type === 'TeamDisabled' ? (
+            disableChatMessage?.type === "ExceededQuota" ? (
+              <NoTokensText
+                resetDisableChatMessage={() => setDisableChatMessage(null)}
+              />
+            ) : disableChatMessage?.type === "TeamDisabled" ? (
               <DisabledText
                 isPaidPlan={disableChatMessage.isPaidPlan}
                 resetDisableChatMessage={() => setDisableChatMessage(null)}
               />
-            ) : disableChatMessage?.type === 'MissingApiKey' ? (
+            ) : disableChatMessage?.type === "MissingApiKey" ? (
               <MissingApiKey
                 provider={disableChatMessage.provider}
                 requireKey={disableChatMessage.requireKey}
@@ -641,10 +806,12 @@ export const Chat = memo(
     );
   },
 );
-Chat.displayName = 'Chat';
+Chat.displayName = "Chat";
 
 function useCurrentToolStatus() {
-  const [toolStatus, setToolStatus] = useState<Record<string, ActionStatus>>({});
+  const [toolStatus, setToolStatus] = useState<Record<string, ActionStatus>>(
+    {},
+  );
   useEffect(() => {
     let canceled = false;
     let artifactSubscription: (() => void) | null = null;
@@ -690,17 +857,25 @@ function exponentialBackoff(numFailures: number) {
 // ✅ Removed: getConvexAuthToken() — replaced by Clerk getToken() inline
 
 // ✅ Replaced: NoTokensText — removed Convex billing URLs + TeamSelector + referral system
-export function NoTokensText({ resetDisableChatMessage }: { resetDisableChatMessage: () => void }) {
+export function NoTokensText({
+  resetDisableChatMessage,
+}: {
+  resetDisableChatMessage: () => void;
+}) {
   const copyToClipboard = (url: string) => {
     navigator.clipboard.writeText(url);
-    toast.success('Link copied to clipboard!');
+    toast.success("Link copied to clipboard!");
   };
 
   return (
     <div className="flex w-full flex-col gap-4">
       <h4>You&apos;ve used all the tokens included with your free plan.</h4>
       <div className="flex flex-wrap items-center gap-2">
-        <Button href="/settings" icon={<KeyIcon className="size-4" />} variant="neutral">
+        <Button
+          href="/settings"
+          icon={<KeyIcon className="size-4" />}
+          variant="neutral"
+        >
           Add your own API key
         </Button>
         <Button
@@ -736,7 +911,7 @@ export function DisabledText({
           className="w-fit"
           icon={<ExternalLinkIcon />}
         >
-          {isPaidPlan ? 'Increase spending limit' : 'Upgrade your plan'}
+          {isPaidPlan ? "Increase spending limit" : "Upgrade your plan"}
         </Button>
         {isPaidPlan && <span>or wait until limits reset</span>}
       </div>
@@ -746,8 +921,8 @@ export function DisabledText({
 
 function maxSizeForModel(modelSelection: ModelSelection, maxSize: number) {
   switch (modelSelection) {
-    case 'auto':
-    case 'gemini-2.5-pro':
+    case "auto":
+    case "gemini-2.5-pro":
       return maxSize;
     default:
       return 8192;

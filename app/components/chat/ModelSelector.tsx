@@ -6,9 +6,6 @@ import type { ModelSelection } from '../../utils/constants';
 import React from 'react';
 import { Tooltip } from '../ui/Tooltip';
 import { HandThumbUpIcon, KeyIcon } from '@heroicons/react/24/outline';
-import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
-import type { Doc } from '@/convex/_generated/dataModel';
 import { captureMessage } from '@sentry/nextjs';
 import { useLaunchDarkly } from '../../lib/hooks/useLaunchDarkly';
 
@@ -119,14 +116,26 @@ export const models: Partial<
   },
 } as const;
 
+// FIX: Created a generic mock type to replace the Convex Doc type
+type ApiKeyMock = {
+  preference?: string;
+  value?: string;
+  google?: string;
+  openai?: string;
+  xai?: string;
+} | null;
+
 export const ModelSelector = React.memo(function ModelSelector({
   modelSelection,
   setModelSelection,
   size = 'md',
 }: ModelSelectorProps) {
-  const apiKey = useQuery(api.apiKeys.apiKeyForCurrentMember);
+  // FIX: Removed `useQuery(api.apiKeys...)`. Hardcoded to null to bypass Convex dependency.
+  const apiKey: ApiKeyMock = null; 
+  
   const selectedModel = models[modelSelection];
   const { useGeminiAuto, enableGpt5 } = useLaunchDarkly();
+  
   if (!selectedModel) {
     captureMessage(`Model ${modelSelection} not found`);
     setModelSelection('auto');
@@ -201,7 +210,8 @@ export const ModelSelector = React.memo(function ModelSelector({
   );
 });
 
-const keyForProvider = (apiKeys: Doc<'convexMembers'>['apiKey'], provider: ModelProvider, useGeminiAuto: boolean) => {
+// FIX: Updated signature to use the ApiKeyMock type instead of Convex Doc
+const keyForProvider = (apiKeys: ApiKeyMock, provider: ModelProvider, useGeminiAuto: boolean) => {
   if (provider === 'anthropic') {
     return apiKeys?.value;
   }
@@ -212,5 +222,5 @@ const keyForProvider = (apiKeys: Doc<'convexMembers'>['apiKey'], provider: Model
       return apiKeys?.value;
     }
   }
-  return apiKeys?.[provider];
+  return apiKeys?.[(provider as keyof ApiKeyMock)];
 };
