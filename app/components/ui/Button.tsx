@@ -4,7 +4,7 @@ import { classNames } from '../../utils/classNames';
 type ButtonVariant = 'primary' | 'neutral' | 'danger' | 'unstyled';
 type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
-interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
+export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: React.ReactNode;

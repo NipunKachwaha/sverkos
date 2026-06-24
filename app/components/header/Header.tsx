@@ -23,7 +23,7 @@ import { useSelectedTeamSlug } from '../../lib/stores/convexTeams';
 import { useUsage } from '../../lib/stores/usage';
 import { useReferralStats } from '../../lib/hooks/useReferralCode';
 import { Menu } from '../sidebar/Menu.client';
-import { useClerk } from '@clerk/nextjs'; // <-- Clerk import
+import { useClerk } from '@clerk/nextjs';
 
 export function Header({ hideSidebarIcon = false }: { hideSidebarIcon?: boolean }) {
   const chat = useStore(chatStore);
@@ -66,7 +66,7 @@ export function Header({ hideSidebarIcon = false }: { hideSidebarIcon?: boolean 
         )}
         <a href="/">
           {/* The logo is shifted up slightly, to visually align it with the hamburger icon. */}
-          <img src="/chef.svg" alt="Chef logo" width={72} height={42} className="relative -top-1" />
+          <img src="/sverkosnamed-logo.png" alt="Sverkos logo" width={112} height={82} className="relative -top-1" />
         </a>
         <a
           href="https://github.com/get-convex/chef"

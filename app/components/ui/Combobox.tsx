@@ -10,18 +10,34 @@ export interface ComboboxOption {
 interface ComboboxProps {
   options: ComboboxOption[];
   value?: string;
-  onChange: (value: string) => void;
+  onChange?: (value: string) => void;
+  // FIX: Added these props to match what the parent component is passing
+  selectedOption?: string;
+  setSelectedOption?: (value: string) => void;
   placeholder?: string;
   className?: string;
+  [key: string]: any; // Catch-all for other extra props like 'searchPlaceholder', 'label', etc.
 }
 
-export function Combobox({ options, value, onChange, placeholder = 'Select an option...', className }: ComboboxProps) {
+export function Combobox({ 
+  options, 
+  value, 
+  onChange, 
+  selectedOption, 
+  setSelectedOption, 
+  placeholder = 'Select an option...', 
+  className,
+  ...props 
+}: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // FIX: Handle both 'value' and 'selectedOption' dynamically
+  const activeValue = value !== undefined ? value : selectedOption;
+
   // Jo option select hua hai usko dhundhne ke liye
-  const selectedOption = options.find((opt) => opt.value === value);
+  const activeSelectedOption = options.find((opt) => opt.value === activeValue);
 
   // Search filter logic
   const filteredOptions = query === ''
@@ -50,8 +66,8 @@ export function Combobox({ options, value, onChange, placeholder = 'Select an op
         <input
           type="text"
           className="w-full bg-transparent border-none outline-none placeholder-gray-400 dark:placeholder-gray-500"
-          placeholder={selectedOption ? selectedOption.label : placeholder}
-          value={isOpen ? query : (selectedOption ? selectedOption.label : '')}
+          placeholder={activeSelectedOption ? activeSelectedOption.label : placeholder}
+          value={isOpen ? query : (activeSelectedOption ? activeSelectedOption.label : '')}
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(true);
@@ -77,16 +93,18 @@ export function Combobox({ options, value, onChange, placeholder = 'Select an op
                 key={option.value}
                 className={classNames(
                   'relative flex items-center justify-between px-4 py-2 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 text-content-primary',
-                  value === option.value ? 'bg-blue-50 dark:bg-gray-700 font-medium' : ''
+                  activeValue === option.value ? 'bg-blue-50 dark:bg-gray-700 font-medium' : ''
                 )}
                 onClick={() => {
-                  onChange(option.value);
+                  // FIX: Safely call whichever function was passed without crashing
+                  if (onChange) onChange(option.value);
+                  if (setSelectedOption) setSelectedOption(option.value);
                   setQuery('');
                   setIsOpen(false);
                 }}
               >
                 <span className="block truncate">{option.label}</span>
-                {value === option.value && <CheckIcon className="w-4 h-4 text-blue-600" />}
+                {activeValue === option.value && <CheckIcon className="w-4 h-4 text-blue-600" />}
               </li>
             ))
           )}

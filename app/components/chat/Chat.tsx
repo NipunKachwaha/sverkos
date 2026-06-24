@@ -329,70 +329,11 @@ export const Chat = memo(
         : ["Bedrock", "Anthropic"];
 
     // ✅ Replaced: getConvexAuthToken(convex) + getTokenUsage() → Clerk getToken + fetch
+    // FIX: Bypassed the API call since the token usage backend route doesn't exist yet (404)
     const checkTokenUsage = useCallback(async () => {
-      if (hasApiKeySet(modelSelection, useGeminiAuto, apiKey)) {
-        setDisableChatMessage(null);
-        return;
-      }
-
-      try {
-        const token = await getToken();
-        if (!token) {
-          console.error("No auth token");
-          return;
-        }
-
-        const res = await fetch("/api/usage/tokens", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to check token usage", res.status);
-          return;
-        }
-
-        const tokenUsage = await res.json();
-
-        if (tokenUsage.status === "error") {
-          console.error(
-            "Failed to check for token usage",
-            tokenUsage.httpStatus,
-            tokenUsage.httpBody,
-          );
-        } else {
-          const {
-            centitokensUsed,
-            centitokensQuota,
-            isTeamDisabled,
-            isPaidPlan,
-          } = tokenUsage;
-          if (centitokensUsed !== undefined && centitokensQuota !== undefined) {
-            console.log(
-              `Tokens used/quota: ${centitokensUsed} / ${centitokensQuota}`,
-            );
-            if (isTeamDisabled) {
-              setDisableChatMessage({ type: "TeamDisabled", isPaidPlan });
-            } else if (
-              !isPaidPlan &&
-              centitokensUsed > centitokensQuota &&
-              !hasAnyApiKeySet(apiKey)
-            ) {
-              setDisableChatMessage({ type: "ExceededQuota" });
-            } else {
-              setDisableChatMessage(null);
-            }
-          }
-        }
-      } catch (error) {
-        captureException(error);
-      }
-    }, [
-      apiKey,
-      getToken,
-      modelSelection,
-      setDisableChatMessage,
-      useGeminiAuto,
-    ]);
+      // Jab tak backend ready nahi hai, hum simply har request ko approve kar rahe hain.
+      setDisableChatMessage(null); 
+    }, [setDisableChatMessage]);
 
     const { messages, status, stop, append, setMessages, reload, error } =
       useChat({

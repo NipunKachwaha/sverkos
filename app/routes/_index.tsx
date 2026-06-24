@@ -2,8 +2,8 @@ import { json } from '@vercel/remix';
 import type { LoaderFunctionArgs } from '@vercel/remix';
 import type { LinksFunction, MetaFunction } from '@vercel/remix';
 import { ClientOnly } from 'remix-utils/client-only';
-import { Header } from '~/components/header/Header';
-import { Homepage } from '~/components/Homepage.client';
+import { Header } from '../components/header/Header';
+import { Homepage } from '../components/Homepage.client';
 
 export const meta: MetaFunction = () => {
   return [
