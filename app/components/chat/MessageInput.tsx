@@ -149,7 +149,7 @@ export const MessageInput = memo(function MessageInput({
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = useCallback(
     (event) => {
-      if (event.key === 'Enter' && selectedTeamSlug) {
+      if (event.key === 'Enter') {
         if (event.shiftKey) {
           return;
         }

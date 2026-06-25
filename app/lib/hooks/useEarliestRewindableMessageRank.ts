@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { api } from '@/lib/api';
 import { useConvexSessionIdOrNullOrLoading } from '../stores/sessionId';
 import { chatIdStore } from '../stores/chatId';
 import type { Id } from '@/convex/_generated/dataModel';

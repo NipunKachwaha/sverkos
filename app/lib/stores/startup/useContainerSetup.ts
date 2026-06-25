@@ -1,22 +1,22 @@
 "use client";
 
 import { useEffect } from 'react';
-import { ContainerBootState, setContainerBootState, waitForBootStepCompleted } from '../containerBootState';
-import { webcontainer } from '../../webcontainer/index';
+import { ContainerBootState, setContainerBootState, waitForBootStepCompleted } from '@/app/lib/stores/containerBootState';
+import { webcontainer } from '@/app/lib/webcontainer/index';
 import { useStore } from '@nanostores/react';
-import { sessionIdStore } from '../sessionId';
+import { sessionIdStore } from '@/app/lib/stores/sessionId';
 import { useAuth } from '@clerk/nextjs';
-import { decompressWithLz4 } from '../../compression';
-import { streamOutput } from '../../../utils/process';
-import { cleanTerminalOutput } from '../../../../lib/agent/utils/shell';
+import { decompressWithLz4 } from '@/app/lib/compression';
+import { streamOutput } from '@/app/utils/process';
+import { cleanTerminalOutput } from '@/lib/agent/utils/shell';
 import { toast } from 'sonner';
 import type { WebContainer } from '@webcontainer/api';
-import { workbenchStore } from '../workbench.client';
-import { appendEnvVarIfNotSet } from '../../../utils/envFileUtils';
-import { getFileUpdateCounter } from '../fileUpdateCounter';
+import { workbenchStore } from '@/app/lib/stores/workbench.client';
+import { appendEnvVarIfNotSet } from '@/app/utils/envFileUtils';
+import { getFileUpdateCounter } from '@/app/lib/stores/fileUpdateCounter';
 import { chatSyncState } from './chatSyncState';
-import { FILE_EVENTS_DEBOUNCE_MS } from '../files';
-import { setChefDebugProperty } from '../../../../lib/agent/utils/chefDebug';
+import { FILE_EVENTS_DEBOUNCE_MS } from '@/app/lib/stores/files';
+import { setChefDebugProperty } from '@/lib/agent/utils/chefDebug';
 
 const TEMPLATE_URL = '/template-snapshot-342e2b07.bin';
 
@@ -116,11 +116,11 @@ async function setupContainer(options: {
   }
 
   // ✅ Replaced: Convex project setup → Supabase env vars setup
-  setContainerBootState(ContainerBootState.SETTING_UP_CONVEX_PROJECT);
+  setContainerBootState(ContainerBootState.READY);
   await setupSupabaseEnvVars(container);
 
   // ✅ Replaced: setupOpenAIToken + setupResendToken via Convex → fetch
-  setContainerBootState(ContainerBootState.SETTING_UP_CONVEX_ENV_VARS);
+  setContainerBootState(ContainerBootState.READY);
   await setupOpenAIToken(container, options.token);
   await setupResendToken(container, options.token);
 

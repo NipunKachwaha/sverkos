@@ -1,8 +1,58 @@
-import type { Id } from '@convex/_generated/dataModel';
 import { useStore } from '@nanostores/react';
 import { atom } from 'nanostores';
+import { useAuth } from '@clerk/nextjs';
+import { useEffect } from 'react';
 
-// ✅ Removed: ConvexReactClient import — ab zarurat nahi
+export const sessionIdStore = atom<string | null | undefined>(undefined);
+export const convexAuthTokenStore = atom<string | null>(null);
+
+// ✅ NAYA HOOK: Yeh hook backend API call karke Session ID fetch karega
+export function useInitializeSession() {
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+
+  useEffect(() => {
+    async function fetchSession() {
+      if (!isLoaded) return;
+      
+      // Agar user logged in nahi hai, toh session null set karo
+      if (!isSignedIn) {
+        sessionIdStore.set(null);
+        return;
+      }
+
+      try {
+        const token = await getToken();
+        setAuthToken(token); // Token ko bhi store mein save kar do
+
+        // Naye backend se session fetch karo
+        const res = await fetch('/api/sessions/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // ✅ Store update! Ab baaki saare waiting functions aage badh jayenge
+          sessionIdStore.set(data.sessionId);
+        } else {
+          console.error('Failed to start session');
+          sessionIdStore.set(null);
+        }
+      } catch (error) {
+        console.error('Session Fetch Error:', error);
+        sessionIdStore.set(null);
+      }
+    }
+
+    // Sirf tabhi call karo jab store khali (undefined) ho
+    if (sessionIdStore.get() === undefined) {
+      fetchSession();
+    }
+  }, [getToken, isLoaded, isSignedIn]);
+}
 
 export function useConvexSessionIdOrNullOrLoading(): string | null | undefined {
   const sessionId = useStore(sessionIdStore);
@@ -36,15 +86,6 @@ export async function waitForConvexSessionId(caller?: string): Promise<string> {
   });
 }
 
-// ✅ Replaced: Id<'sessions'> → string (Clerk userId)
-export const sessionIdStore = atom<string | null | undefined>(undefined);
-
-export const convexAuthTokenStore = atom<string | null>(null);
-
-/**
- * ✅ Replaced: Convex internal token extraction → cached Clerk token
- * Token is set via setAuthToken() when Clerk provides it.
- */
 export function getConvexAuthToken(): string | null {
   return convexAuthTokenStore.get();
 }

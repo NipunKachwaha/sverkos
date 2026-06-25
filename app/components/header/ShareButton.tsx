@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import * as Popover from '@radix-ui/react-popover';
 import { useMutation, useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { api } from '@/lib/api';
 import { useConvexSessionId } from '../../lib/stores/sessionId';
 import { useChatId } from '../../lib/stores/chatId';
 import {

@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 
 // GET: Fetch a specific chat by ID
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { chatId: string } }) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const { data: chat, error } = await supabase
       .from("chats")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", params.chatId)
       .neq("is_deleted", true)
       .single();
 
@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // PATCH: Update chat description or urlId
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: { chatId: string } }) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const { error } = await supabase
       .from("chats")
       .update(updateData)
-      .eq("id", params.id);
+      .eq("id", params.chatId);
 
     if (error) throw error;
 
@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 // DELETE: Soft delete a chat
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { chatId: string } }) {
   try {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -56,7 +56,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const { error } = await supabase
       .from("chats")
       .update({ is_deleted: true })
-      .eq("id", params.id);
+      .eq("id", params.chatId);
 
     if (error) throw error;
 

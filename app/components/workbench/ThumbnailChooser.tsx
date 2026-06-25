@@ -6,7 +6,7 @@ import { useChatId } from '../../lib/stores/chatId';
 import { toast } from 'sonner';
 import { getConvexSiteUrl } from '../../lib/convexSiteUrl';
 import { useQuery } from 'convex/react';
-import { api } from '@/convex/_generated/api';
+import { api } from '@/lib/api';
 import { Button } from '@ui/Button';
 import { Modal } from '@ui/Modal';
 

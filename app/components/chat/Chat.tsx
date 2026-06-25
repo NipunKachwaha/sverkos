@@ -16,42 +16,43 @@ import {
 import {
   useMessageParser,
   type PartCache,
-} from "../../lib/hooks/useMessageParser";
-import { useSnapScroll } from "../../lib/hooks/useSnapScroll";
-import { description } from "../../lib/stores/description";
-import { chatStore } from "../../lib/stores/chatId";
-import { workbenchStore } from "../../lib/stores/workbench.client";
+} from "@/app/lib/hooks/useMessageParser";
+import { useSnapScroll } from "@/app/lib/hooks/useSnapScroll";
+import { description } from "@/app/lib/stores/description";
+import { chatStore } from "@/app/lib/stores/chatId";
+import { workbenchStore } from "@/app/lib/stores/workbench.client";
 import {
   MAX_CONSECUTIVE_DEPLOY_ERRORS,
   type ModelSelection,
-} from "../../utils/constants";
-import { cubicEasingFn } from "../../utils/easings";
-import { createScopedLogger } from "../../../lib/agent/utils/logger";
+} from "@/app/utils/constants";
+import { cubicEasingFn } from "@/app/utils/easings";
+import { createScopedLogger } from "@/lib/agent/utils/logger";
 import { BaseChat } from "./BaseChat.client";
-import { createSampler } from "../../utils/sampler";
-import { filesToArtifacts } from "../../utils/fileUtils";
-import { ChatContextManager } from "../../../lib/agent/ChatContextManager";
+import { createSampler } from "@/app/utils/sampler";
+import { filesToArtifacts } from "@/app/utils/fileUtils";
+import { ChatContextManager } from "@/lib/agent/ChatContextManager";
 import { toast } from "sonner";
-import type { PartId } from "../../lib/stores/artifacts";
+import type { PartId } from "@/app/lib/stores/artifacts";
 import { captureException, captureMessage } from "@sentry/nextjs";
-import type { ActionStatus } from "../../lib/runtime/action-runner";
-import { chatIdStore, initialIdStore } from "../../lib/stores/chatId";
+import type { ActionStatus } from "@/app/lib/runtime/action-runner";
+import { chatIdStore, initialIdStore } from "@/app/lib/stores/chatId";
 import { formatDistanceStrict } from "date-fns";
 import { atom } from "nanostores";
 import { STATUS_MESSAGES } from "./StreamingIndicator";
-import { IconButton as Button } from "../ui/IconButton";
+import { IconButton as Button } from "@/app/components/ui/IconButton";
 import { ClipboardIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
-import type { ProviderType } from "../../lib/common/annotations";
-import { setChefDebugProperty } from "../../../lib/agent/utils/chefDebug";
+import type { ProviderType } from "@/app/lib/common/annotations";
+import { setChefDebugProperty } from "@/lib/agent/utils/chefDebug";
 import { MissingApiKey } from "./MissingApiKey";
 import { models, type ModelProvider } from "./ModelSelector";
-import { useLaunchDarkly } from "../../lib/hooks/useLaunchDarkly";
+import { useLaunchDarkly } from "@/app/lib/hooks/useLaunchDarkly";
 import { KeyIcon } from "@heroicons/react/24/outline";
-import { UsageDebugView } from "../debug/UsageDebugView";
-import { useUsage } from "../../lib/stores/usage";
-import { hasAnyApiKeySet, hasApiKeySet } from "../../lib/common/apiKey";
-import { chatSyncState } from "../../lib/stores/startup/chatSyncState";
+import { UsageDebugView } from "@/app/components/debug/UsageDebugView";
+import { useUsage } from "@/app/lib/stores/usage";
+import { hasAnyApiKeySet, hasApiKeySet } from "@/app/lib/common/apiKey";
+import { chatSyncState } from "@/app/lib/stores/startup/chatSyncState";
 import { useAuth } from "@clerk/nextjs";
+import { useInitializeSession } from "@/app/lib/stores/sessionId";
 
 const logger = createScopedLogger("Chat");
 
@@ -119,6 +120,7 @@ export const Chat = memo(
     hadSuccessfulDeploy,
     subchats,
   }: ChatProps) => {
+    useInitializeSession();
     // ✅ Replaced: useConvex() + useConvexSessionIdOrNullOrLoading() → Clerk
     const { userId: sessionId, getToken } = useAuth();
 

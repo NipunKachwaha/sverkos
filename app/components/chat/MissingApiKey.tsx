@@ -6,7 +6,7 @@ import { IconButton as Button } from '../ui/IconButton';
 import { TextInput } from '../ui/TextInput';
 import { toast } from 'sonner';
 import { EyeNoneIcon, EyeOpenIcon } from '@radix-ui/react-icons';
-import { api } from '@/convex/_generated/api';
+import { api } from '@/lib/api';
 import { captureException } from '@sentry/nextjs';
 import { type ModelProvider, displayModelProviderName } from './ModelSelector';
 import { KeyIcon } from '@heroicons/react/24/outline';

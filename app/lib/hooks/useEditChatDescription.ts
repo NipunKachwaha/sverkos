@@ -1,4 +1,4 @@
-import { api } from '@/convex/_generated/api';
+import { api } from '@/lib/api';
 import { useStore } from '@nanostores/react';
 import { useConvex } from 'convex/react';
 import { useCallback, useEffect, useState } from 'react';

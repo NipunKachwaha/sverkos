@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
 import { ArrowUpRight } from './Icons'
 import {
   SignInButton,
   SignUpButton,
   UserButton,
-} from "@clerk/nextjs"
-import { useAuth } from "@clerk/nextjs"
-import localFont from 'next/font/local'
+} from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
+import localFont from 'next/font/local';
 
 const Zaslia = localFont({
   src: '../../public/fonts/Zaslia.otf',
@@ -51,12 +51,12 @@ export default function Navbar() {
           <>
             <SignInButton mode="modal">
               <button className="rounded-full border border-white/30 px-4 py-2 text-sm font-medium text-white/90 font-body hover:bg-white/10 transition">
-                Sign in
+                Log in
               </button>
             </SignInButton>
             <SignUpButton mode="modal">
               <button className="rounded-full bg-white text-black px-4 py-2 text-sm font-medium font-body hover:bg-white/90 transition">
-                Sign up
+                Start your Journey
               </button>
             </SignUpButton>
           </>
