@@ -4,9 +4,9 @@ import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
 
 export const sessionIdStore = atom<string | null | undefined>(undefined);
-export const convexAuthTokenStore = atom<string | null>(null);
 
-// ✅ NAYA HOOK: Yeh hook backend API call karke Session ID fetch karega
+let isFetching = false; 
+
 export function useInitializeSession() {
   const { getToken, isLoaded, isSignedIn } = useAuth();
 
@@ -14,17 +14,19 @@ export function useInitializeSession() {
     async function fetchSession() {
       if (!isLoaded) return;
       
-      // Agar user logged in nahi hai, toh session null set karo
       if (!isSignedIn) {
         sessionIdStore.set(null);
         return;
       }
 
+      // Guard against React Strict Mode double execution
+      if (isFetching || sessionIdStore.get() !== undefined) return;
+      isFetching = true;
+
       try {
         const token = await getToken();
-        setAuthToken(token); // Token ko bhi store mein save kar do
 
-        // Naye backend se session fetch karo
+        // Backend API call (Supabase)
         const res = await fetch('/api/sessions/start', {
           method: 'POST',
           headers: {
@@ -35,23 +37,23 @@ export function useInitializeSession() {
 
         if (res.ok) {
           const data = await res.json();
-          // ✅ Store update! Ab baaki saare waiting functions aage badh jayenge
           sessionIdStore.set(data.sessionId);
         } else {
-          console.error('Failed to start session');
+          // ✅ FIX: Read the actual error from backend
+          const errorData = await res.json().catch(() => ({ message: 'Unknown error' }));
+          console.error(`Failed to start session: ${res.status}`, errorData);
           sessionIdStore.set(null);
         }
       } catch (error) {
         console.error('Session Fetch Error:', error);
         sessionIdStore.set(null);
+      } finally {
+        isFetching = false;
       }
     }
 
-    // Sirf tabhi call karo jab store khali (undefined) ho
-    if (sessionIdStore.get() === undefined) {
-      fetchSession();
-    }
-  }, [getToken, isLoaded, isSignedIn]);
+    fetchSession();
+  }, [isLoaded, isSignedIn]);
 }
 
 export function useConvexSessionIdOrNullOrLoading(): string | null | undefined {
@@ -68,28 +70,39 @@ export function useConvexSessionId(): string {
 }
 
 export async function waitForConvexSessionId(caller?: string): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const sessionId = sessionIdStore.get();
+    
     if (sessionId !== null && sessionId !== undefined) {
       resolve(sessionId);
       return;
     }
+
+    if (sessionId === null) {
+      reject(new Error("Session ID is null. User might not be signed in or session creation failed."));
+      return;
+    }
+    
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error("Timeout waiting for session ID"));
+    }, 10000);
+
     if (caller) {
       console.log(`[${caller}] Waiting for session ID...`);
     }
-    const unsubscribe = sessionIdStore.subscribe((sessionId) => {
-      if (sessionId !== null && sessionId !== undefined) {
+    
+    const unsubscribe = sessionIdStore.subscribe((newSessionId) => {
+      if (newSessionId !== undefined) {
+        clearTimeout(timeout);
         unsubscribe();
-        resolve(sessionId);
+        
+        if (newSessionId !== null) {
+          resolve(newSessionId);
+        } else {
+          reject(new Error("Session ID became null during wait."));
+        }
       }
     });
   });
-}
-
-export function getConvexAuthToken(): string | null {
-  return convexAuthTokenStore.get();
-}
-
-export function setAuthToken(token: string | null) {
-  convexAuthTokenStore.set(token);
 }

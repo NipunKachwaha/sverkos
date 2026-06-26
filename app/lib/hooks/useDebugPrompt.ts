@@ -2,10 +2,9 @@ import { useConvex, useMutation, useQuery } from 'convex/react';
 import { useQueries as useReactQueries } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { CoreMessage } from 'ai';
-import { decompressWithLz4 } from '../compression.client';
-import { queryClientStore } from '../stores/reactQueryClient';
+import { decompressWithLz4 } from '@/app/lib/compression.client';
 import { useEffect, useState } from 'react';
-import { getConvexAuthToken } from '../stores/sessionId';
+import { useAuth } from '@clerk/nextjs';
 
 async function fetchPromptData(url: string): Promise<CoreMessage[]> {
   const response = await fetch(url);
@@ -21,35 +20,38 @@ async function fetchPromptData(url: string): Promise<CoreMessage[]> {
 }
 
 export function useAuthToken() {
+  const { getToken, isLoaded, isSignedIn } = useAuth(); // ✅ Clerk auth
   const [authToken, setAuthToken] = useState<string | null>(null);
-  const convex = useConvex();
+
   useEffect(() => {
+    let mounted = true;
+
     async function grabAuthToken() {
-      const token = getConvexAuthToken(convex);
-      if (token !== authToken) {
-        setAuthToken(token);
+      if (!isLoaded || !isSignedIn) return; // ✅ Wait for Clerk to be ready
+      const token = await getToken();
+      if (mounted && token !== authToken) {
+        setAuthToken(token ?? null);
       }
     }
     grabAuthToken();
 
-    // This token doesn't expire for 24 hours, but it might not be refreshed until there's just a little time left.
     const intervalId = setInterval(
       () => {
         grabAuthToken();
       },
-      // If there isn't one, check again very soon! This is unusual in Chef.
-      // If there is one, occasionally check for a new one to try to catch the update.
       authToken ? 10 * 60 * 1000 : 100,
     );
-    return () => clearInterval(intervalId);
-  }, [convex, authToken]);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+    };
+  }, [getToken, isLoaded, isSignedIn, authToken]);
+
   return authToken;
 }
 
-/** Also requests the convex deployment to check if the user is an admin. */
 export function useIsAdmin() {
-  // Get the auth token (the same one this Convex WebSocket connection is already authenticated with)
-  // because we don't make it available in Convex functions.
   const authToken = useAuthToken();
   const requestAdminCheck = useMutation(api.admin.requestAdminCheck);
   const isAdmin = useQuery(api.admin.isCurrentUserAdmin, {});
@@ -67,55 +69,65 @@ export function useIsAdmin() {
   return !!isAdmin;
 }
 
-export function useDebugPrompt(chatInitialId: string) {
-  const isAdmin = useIsAdmin();
-  const promptMetadatas = useQuery(api.debugPrompt.show, isAdmin ? { chatInitialId } : 'skip');
+interface DebugPromptData {
+  prompt: CoreMessage[] | undefined;
+  completion: CoreMessage[];
+  [key: string]: unknown;
+}
 
-  // Use React Query to fetch and cache the prompts for each URL forever.
-  const queries = useReactQueries(
-    {
-      queries: (promptMetadatas || []).map((promptMetadata) => ({
-        queryKey: ['prompt', promptMetadata.coreMessagesUrl],
-        queryFn: () => fetchPromptData(promptMetadata.coreMessagesUrl!),
-        // These data at these URLs never changes
-        staleTime: Infinity,
-        // If this is a dedicated debugging page where many prompts are shown this might need to change
-        gcTime: 10 * 60 * 1000,
-      })),
-    },
-    queryClientStore.get(),
+interface DebugPromptResult {
+  data: DebugPromptData[] | null;
+  isPending: boolean;
+  error: Error | null;
+}
+
+export function useDebugPrompt(chatInitialId: string): DebugPromptResult {
+  const isAdmin = useIsAdmin();
+  const promptMetadatas = useQuery(
+    api.debugPrompt.show,
+    isAdmin ? { chatInitialId } : 'skip'
   );
 
-  // Any errors return an error.
+  const queries = useReactQueries({
+    queries: (promptMetadatas ?? []).map((promptMetadata) => ({
+      queryKey: ['prompt', promptMetadata.coreMessagesUrl] as const,
+      queryFn: () => fetchPromptData(promptMetadata.coreMessagesUrl!),
+      staleTime: Infinity,
+      gcTime: 10 * 60 * 1000,
+      enabled: !!promptMetadata.coreMessagesUrl,
+    })),
+  });
+
   const firstErroredQuery = queries.find((query) => query.isError);
   if (firstErroredQuery) {
     return {
       data: null,
-      isPending: false as const,
-      error: firstErroredQuery.error,
+      isPending: false,
+      error: firstErroredQuery.error as Error,
     };
   }
 
-  // If no HTTP request have completed, call that pending.
-  if (promptMetadatas === undefined || (queries.length > 0 && !queries.some((query) => query.data))) {
+  if (
+    promptMetadatas === undefined ||
+    (queries.length > 0 && !queries.some((query) => query.data))
+  ) {
     return {
       data: null,
-      isPending: true as const,
+      isPending: true,
       error: null,
     };
   }
 
-  // Elements of this array may be missing their prompt messages.
   return {
     data: queries.map((query, i) => {
-      const { responseCoreMessages, ...rest } = promptMetadatas[i];
+      const { responseCoreMessages, ...rest } = promptMetadatas![i];
       return {
-        prompt: query.data || undefined,
+        prompt: query.data ?? undefined,
         completion: responseCoreMessages,
         ...rest,
       };
     }),
-    isPending: false as const,
+    isPending: false,
     error: null,
   };
 }

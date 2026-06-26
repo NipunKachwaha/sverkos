@@ -105,21 +105,12 @@
 
 import { useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { setAuthToken } from '../lib/stores/sessionId';
-import { setProfile } from '../lib/stores/profile';
+import { setProfile } from '@/app/lib/stores/profile';
 
-// FIX: Removed LaunchDarkly wrapper (withLDProvider)
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const { userId, getToken } = useAuth();
+  const { userId } = useAuth();
   const { user } = useUser();
 
-  // Cache Clerk token for other components
-  useEffect(() => {
-    if (!userId) return;
-    getToken().then((token) => setAuthToken(token));
-  }, [userId, getToken]);
-
-  // FIX: Removed getConvexProfile. Directly syncing Clerk user data to the app's profile store.
   useEffect(() => {
     if (user && userId) {
       setProfile({

@@ -39,7 +39,7 @@ import { chatIdStore, initialIdStore } from "@/app/lib/stores/chatId";
 import { formatDistanceStrict } from "date-fns";
 import { atom } from "nanostores";
 import { STATUS_MESSAGES } from "./StreamingIndicator";
-import { IconButton as Button } from "@/app/components/ui/IconButton";
+import { Button } from "@/app/components/ui/Button";
 import { ClipboardIcon, ExternalLinkIcon } from "@radix-ui/react-icons";
 import type { ProviderType } from "@/app/lib/common/annotations";
 import { setChefDebugProperty } from "@/lib/agent/utils/chefDebug";
@@ -231,12 +231,10 @@ export const Chat = memo(
     useEffect(() => {
       const url = new URL(window.location.href);
       if (url.searchParams.get("rewind") === "true") {
-        // ✅ Replaced: removed Convex-specific message
         toast.info("Successfully reverted changes.");
       }
     }, []);
 
-    // Reset retries counter every minute
     useEffect(() => {
       const resetInterval = setInterval(() => {
         retryState.set({ numFailures: 0, nextRetry: Date.now() });
@@ -312,7 +310,6 @@ export const Chat = memo(
       | null
     >(null);
 
-    // ✅ Replaced: useSelectedTeamSlug() → null (no team concept in your app)
     const usage = useUsage({ teamSlug: null });
     const forceDisable =
       usage &&
@@ -330,10 +327,7 @@ export const Chat = memo(
         ? ["Anthropic", "Bedrock"]
         : ["Bedrock", "Anthropic"];
 
-    // ✅ Replaced: getConvexAuthToken(convex) + getTokenUsage() → Clerk getToken + fetch
-    // FIX: Bypassed the API call since the token usage backend route doesn't exist yet (404)
     const checkTokenUsage = useCallback(async () => {
-      // Jab tak backend ready nahi hai, hum simply har request ko approve kar rahe hain.
       setDisableChatMessage(null); 
     }, [setDisableChatMessage]);
 
@@ -345,7 +339,6 @@ export const Chat = memo(
         experimental_prepareRequestBody: async ({ messages }) => {
           const chatInitialId = initialIdStore.get();
 
-          // ✅ Replaced: getConvexAuthToken(convex) → Clerk getToken
           const token = await getToken();
           if (!token) {
             throw new Error("No auth token");
@@ -607,9 +600,17 @@ export const Chat = memo(
         setSendMessageInProgress(true);
         enableAutoScroll();
 
-        const chatInitialized = await initializeChat();
-        if (!chatInitialized) return;
+        console.log("1. Starting initialization...");
 
+        const chatInitialized = await initializeChat();
+        if (!chatInitialized) {
+          console.error("2. ERROR: chatInitialized false return hua!");
+          toast.error("Chat initialize is not working. Please check console.");
+          setSendMessageInProgress(false);
+          return;
+        }
+
+        console.log("3. Chat initialized successfully, running animation...");
         runAnimation();
 
         const shouldSendRelevantFiles =
@@ -797,9 +798,6 @@ function exponentialBackoff(numFailures: number) {
   return delay;
 }
 
-// ✅ Removed: getConvexAuthToken() — replaced by Clerk getToken() inline
-
-// ✅ Replaced: NoTokensText — removed Convex billing URLs + TeamSelector + referral system
 export function NoTokensText({
   resetDisableChatMessage,
 }: {
@@ -833,7 +831,7 @@ export function NoTokensText({
   );
 }
 
-// ✅ Replaced: DisabledText — removed Convex billing URLs + TeamSelector
+
 export function DisabledText({
   isPaidPlan,
   resetDisableChatMessage,

@@ -6,7 +6,7 @@
  * Server-side functions accept either, so we call their union a `chatId`.
  */
 import { useStore } from '@nanostores/react';
-import { setChefDebugProperty } from '../../../lib/agent/utils/chefDebug';
+import { setChefDebugProperty } from '@/lib/agent/utils/chefDebug';
 import { atom, computed, map } from 'nanostores';
 
 /*

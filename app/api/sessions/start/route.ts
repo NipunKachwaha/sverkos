@@ -1,28 +1,40 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase"; 
 
 export async function POST() {
   try {
     const { userId } = await auth(); 
-    
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Pehle members table se is user ka internal ID nikalo
-    const { data: member, error: memberError } = await supabase
+    let { data: member, error: memberError } = await supabase
       .from("members")
       .select("id")
       .eq("clerk_id", userId)
       .single();
 
-    if (memberError || !member) {
+    if (memberError && memberError.code === 'PGRST116') {
+      console.log(`Member not found for clerk_id: ${userId}. Creating new member...`);
+      
+      const { data: newMember, error: insertMemberError } = await supabase
+        .from("members")
+        .insert({ clerk_id: userId })
+        .select("id")
+        .single();
+
+      if (insertMemberError) {
+        console.error("Failed to create member:", insertMemberError);
+        return NextResponse.json({ error: "Could not create member in DB." }, { status: 500 });
+      }
+      member = newMember;
+      
+    } else if (memberError || !member) {
       console.error("Member lookup failed:", memberError);
       return NextResponse.json({ error: "Member not found in DB." }, { status: 404 });
     }
 
-    // 2. Ab check karo kya is member ka koi active session hai (Using member_id)
     let { data: session, error: fetchError } = await supabase
       .from("sessions")
       .select("id")
@@ -36,7 +48,6 @@ export async function POST() {
       throw fetchError;
     }
 
-    // 3. Agar session nahi mila, toh naya banao (Using member_id)
     if (!session) {
       const { data: newSession, error: insertError } = await supabase
         .from("sessions")
